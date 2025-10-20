@@ -331,21 +331,134 @@ class KrossWordWidget(QWidget):
             print(f"DEBUG: Typed '{char}' in cell ({self.selected_row}, {self.selected_col}), was_empty: {was_empty}")
             cell.user_input = char
 
-            # Use appropriate movement based on whether cell was empty
+            # Check if we're at the last character of the current entry (position-based)
+            start, end = self._get_word_bounds(self.selected_row, self.selected_col, self.highlight_mode)
+            is_last_character = False
+
+            if start and end:
+                if self.highlight_mode == "across":
+                    is_last_character = (self.selected_col == end[0])
+                else:  # down
+                    is_last_character = (self.selected_row == end[1])
+
+            # Use appropriate movement based on whether cell was empty and position in entry
             if was_empty:
-                # If cell was empty, skip filled cells to find next empty one
-                print("DEBUG: Cell was empty, using skip-filled movement")
-                self.move_to_next_cell()
-            else:
-                # If cell was already filled, just move to next cell normally
-                print("DEBUG: Cell was filled, using regular movement")
+                print("DEBUG: Cell was empty and not last character, moving to adjacent character")
+                self._loop_to_empty_in_entry(is_last_character)
+            elif not is_last_character:
+                # If cell was already filled and not at last character, move to next cell normally
+                print("DEBUG: Cell was filled and not last character, using regular movement")
                 if self.highlight_mode == "down":
                     self._move_down()
                 else:
                     self._move_right()
+            # if it's not empty and it's the last character, do nothing
+            
 
             self.value_changed.emit()
             self.update()
+
+    def _loop_to_empty_in_entry(self, is_last_character):
+        """Loop back to start of current entry and find empty squares to move to"""
+        if not self.puzzle:
+            return
+
+        # Get current entry bounds
+        start, end = self._get_word_bounds(self.selected_row, self.selected_col, self.highlight_mode)
+        if not start or not end:
+            return
+
+        # Store original position and mode
+        original_row, original_col = self.selected_row, self.selected_col
+        original_mode = self.highlight_mode
+
+        print(f"DEBUG: Original position: ({original_row}, {original_col}), entry start: {start}, end: {end}")
+
+        # Find first empty square in entry, starting from next character and wrapping around
+        if self.highlight_mode == "across":
+            row = start[1]
+            # Start from next character after current
+            search_start = self.selected_col + 1
+            if search_start > end[0]:
+                search_start = start[0]
+
+            # First pass: from start character to end
+            for col in range(search_start, end[0] + 1):
+                if self.puzzle.cells[row][col].user_input == "":
+                    self.selected_row, self.selected_col = (row, col)
+                    print(f"DEBUG: Found first empty position: {(row, col)}")
+                    self.cell_selected.emit(self.selected_row, self.selected_col)
+                    self.update()
+                    return
+
+            # Second pass: from start to current character (if not found in first pass)
+            for col in range(start[0], self.selected_col + 1):
+                if self.puzzle.cells[row][col].user_input == "":
+                    self.selected_row, self.selected_col = (row, col)
+                    print(f"DEBUG: Found first empty position: {(row, col)}")
+                    self.cell_selected.emit(self.selected_row, self.selected_col)
+                    self.update()
+                    return
+        else:  # down
+            col = start[0]
+            # Start from next character after current
+            search_start = self.selected_row + 1
+            if search_start > end[1]:
+                search_start = start[1]
+
+            # First pass: from start character to end
+            for row in range(search_start, end[1] + 1):
+                if self.puzzle.cells[row][col].user_input == "":
+                    self.selected_row, self.selected_col = (row, col)
+                    print(f"DEBUG: Found first empty position: {(row, col)}")
+                    self.cell_selected.emit(self.selected_row, self.selected_col)
+                    self.update()
+                    return
+
+            # Second pass: from start to current character (if not found in first pass)
+            for row in range(start[1], self.selected_row + 1):
+                if self.puzzle.cells[row][col].user_input == "":
+                    self.selected_row, self.selected_col = (row, col)
+                    print(f"DEBUG: Found first empty position: {(row, col)}")
+                    self.cell_selected.emit(self.selected_row, self.selected_col)
+                    self.update()
+                    return
+
+        # No empty squares found in entry - move to next character
+        
+        print("DEBUG: No empty squares found in entry, moving to next character")
+        if not is_last_character:
+            self.highlight_mode = original_mode  # Ensure mode is correct
+            if self.highlight_mode == "down":
+                self._move_down()
+            else:
+                self._move_right()
+        # if it is the last character, then don't move at all 
+
+    def _is_truly_last_empty_character(self):
+        """Check if current cell is the last empty character in the entry"""
+        if not self.puzzle:
+            return False
+
+        start, end = self._get_word_bounds(self.selected_row, self.selected_col, self.highlight_mode)
+        if not start or not end:
+            return False
+
+        # Check if all other cells in the entry are filled
+        if self.highlight_mode == "across":
+            row = start[1]
+            for col in range(start[0], end[0] + 1):
+                if (row, col) != (self.selected_row, self.selected_col):
+                    if self.puzzle.cells[row][col].user_input == "":
+                        return False  # Found another empty cell
+        else:  # down
+            col = start[0]
+            for row in range(start[1], end[1] + 1):
+                if (row, col) != (self.selected_row, self.selected_col):
+                    if self.puzzle.cells[row][col].user_input == "":
+                        return False  # Found another empty cell
+
+        return True  # Current cell is the last empty one
 
     def _handle_delete(self, key):
         """Handle backspace/delete key with smart behavior"""
@@ -410,33 +523,60 @@ class KrossWordWidget(QWidget):
             if start_cell.clue_number:
                 current_clue = self.puzzle.get_clue(start_cell.clue_number, self.highlight_mode)
 
-        # Get the clue list for current direction
-        clue_list = self.puzzle.across_clues if self.highlight_mode == "across" else self.puzzle.down_clues
+        # If current mode is across and we're at the last across clue, switch to down
+        if self.highlight_mode == "across":
+            across_clues = self.puzzle.across_clues
+            if across_clues:
+                current_index = -1
+                if current_clue:
+                    for i, clue in enumerate(across_clues):
+                        if clue.number == current_clue.number:
+                            current_index = i
+                            break
 
-        if not clue_list:
-            return  # No clues in this direction
-
-        if current_clue:
-            # Find current clue index
-            current_index = -1
-            for i, clue in enumerate(clue_list):
-                if clue.number == current_clue.number:
-                    current_index = i
-                    break
-
-            # Get next clue (wrap around if at end)
-            next_index = (current_index + 1) % len(clue_list)
-            next_clue = clue_list[next_index]
+                # If we're at the last across clue, switch to down mode
+                if current_index == len(across_clues) - 1:
+                    self.highlight_mode = "down"
+                    if self.puzzle.down_clues:
+                        next_clue = self.puzzle.down_clues[0]  # First down clue
+                        print(f"Switching from across to down, moved to clue #{next_clue.number}: {next_clue.text[:50]}...")
+                    else:
+                        return  # No down clues available
+                else:
+                    # Continue with next across clue
+                    next_index = (current_index + 1) % len(across_clues)
+                    next_clue = across_clues[next_index]
+                    print(f"Moved to next across clue #{next_clue.number}: {next_clue.text[:50]}...")
         else:
-            # No current clue found, start from first clue
-            next_clue = clue_list[0]
+            # Current mode is down - cycle through down clues
+            down_clues = self.puzzle.down_clues
+            if not down_clues:
+                return  # No down clues in this direction
 
-        # Move to the next clue's starting position
+            current_index = -1
+            if current_clue:
+                for i, clue in enumerate(down_clues):
+                    if clue.number == current_clue.number:
+                        current_index = i
+                        break
+            if current_index == len(down_clues) - 1:
+                self.highlight_mode = "across"
+                if self.puzzle.across_clues:
+                    next_clue = self.puzzle.across_clues[0]  # First across clue
+                    print(f"Switching from down to across, moved to clue #{next_clue.number}: {next_clue.text[:50]}...")
+                else:
+                    return  # No across clues available
+
+            # Get next down clue (wrap around if at end)
+            next_index = (current_index + 1) % len(down_clues)
+            next_clue = down_clues[next_index]
+            print(f"Moved to next down clue #{next_clue.number}: {next_clue.text[:50]}...")
+
+        # Move to the selected clue's starting position
         self.selected_row = next_clue.start_row
         self.selected_col = next_clue.start_col
         self.cell_selected.emit(self.selected_row, self.selected_col)
         self.update()
-        print(f"Moved to clue #{next_clue.number} ({self.highlight_mode}): {next_clue.text[:50]}...")
 
     def _move_left(self):
         """Move selection to the left with arrow key"""

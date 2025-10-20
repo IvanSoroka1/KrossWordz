@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 from parsers.ipuz_parser import IPUZParser
-from models.crossword import KrossWordPuzzle
+from models.krossword import KrossWordPuzzle
 
 class FileLoaderService:
     """Service for loading crossword puzzle files"""

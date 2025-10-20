@@ -1,6 +1,6 @@
 import json
 from typing import Dict, Any, Optional
-from models.crossword import KrossWordPuzzle, KrossWordCell, Clue
+from models.krossword import KrossWordPuzzle, KrossWordCell, Clue
 
 class IPUZParser:
     """Parser for .ipuz format files"""
