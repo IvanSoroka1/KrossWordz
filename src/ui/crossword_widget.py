@@ -249,7 +249,10 @@ class KrossWordWidget(QWidget):
                         QBrush(QColor(150, 200, 255)),
                     )
             else:
-                painter.fillRect(x, y, self.cell_size, self.cell_size, QBrush(Qt.white))
+                if cell.is_shaded:
+                    painter.fillRect(x, y, self.cell_size, self.cell_size, QColor(194, 194, 194))
+                else:
+                    painter.fillRect(x, y, self.cell_size, self.cell_size, QBrush(Qt.white))
 
         painter.setPen(QPen(Qt.black))
         font = QFont("Arial", self.font_size + 8, QFont.Normal)
@@ -257,6 +260,12 @@ class KrossWordWidget(QWidget):
 
         has_input = bool(cell.user_input)
         has_solution = bool(cell.solution)
+
+        if cell.is_circled:
+            painter.save()
+            painter.setPen(QPen(Qt.black, 1))
+            painter.drawEllipse(QPoint(x + self.cell_size / 2, y + self.cell_size / 2), self.cell_size/2-2 , self.cell_size/2-2 )
+            painter.restore()
 
         if has_input:
             text = cell.user_input.upper()

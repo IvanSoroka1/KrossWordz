@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSplitter,
+    QStyle,
     QVBoxLayout,
     QWidget,
 )
@@ -27,7 +28,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.file_loader_service = FileLoaderService()
         self.current_puzzle = None
+        self.elapsed_seconds = 0
+        self.timer_running = False
         self.init_ui()
+        self.puzzle_timer = QTimer(self)
+        self.puzzle_timer.setInterval(1000)
+        self.puzzle_timer.timeout.connect(self._update_timer_display)
         # Create and install global event filter for tab key handling
         self.tab_event_filter = TabEventFilter(self.crossword_widget)
         QApplication.instance().installEventFilter(self.tab_event_filter)
@@ -108,6 +114,34 @@ class MainWindow(QMainWindow):
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
 
+        # Timer display above current clue
+        timer_row = QHBoxLayout()
+        self.timer_label = QLabel("00:00")
+        self.timer_label.setFont(QFont("Arial", 12, QFont.Bold))
+        self.timer_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        timer_row.addWidget(self.timer_label)
+
+        self.pause_button = QPushButton()
+        self.pause_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+        self.pause_button.setFixedSize(36, 36)
+        self.pause_button.setToolTip("Pause timer")
+        self.pause_button.setEnabled(False)
+        self.pause_button.setVisible(False)
+        self.pause_button.clicked.connect(self.pause_puzzle_timer)
+        timer_row.addWidget(self.pause_button)
+
+        self.resume_button = QPushButton()
+        self.resume_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.resume_button.setFixedSize(36, 36)
+        self.resume_button.setToolTip("Resume timer")
+        self.resume_button.setEnabled(False)
+        self.resume_button.setVisible(False)
+        self.resume_button.clicked.connect(self.resume_puzzle_timer)
+        timer_row.addWidget(self.resume_button)
+
+        timer_row.addStretch()
+        left_layout.addLayout(timer_row)
+
         # Current clue display above crossword
         self.current_clue_label = QLabel("Select a cell to see clue")
         self.current_clue_label.setFont(QFont("Arial", 12, QFont.Bold))
@@ -173,6 +207,7 @@ class MainWindow(QMainWindow):
             self.crossword_widget.set_puzzle(self.current_puzzle)
             self.update_clues_display()
             self.update_title_label()
+            self.start_puzzle_timer()
             self.statusBar().showMessage(f"Loaded: {self.current_puzzle.title}")
             return True
         except Exception as e:
@@ -231,6 +266,59 @@ class MainWindow(QMainWindow):
                 if not cell.is_black and cell.solution:
                     cell.reveal()
         self.crossword_widget.update()
+
+    def start_puzzle_timer(self):
+        """Start or restart the elapsed time display."""
+        if self.puzzle_timer.isActive():
+            self.puzzle_timer.stop()
+        self.elapsed_seconds = 0
+        self.timer_label.setText("00:00")
+        self.puzzle_timer.start()
+        self.timer_running = True
+        self.pause_button.setEnabled(True)
+        self.pause_button.setVisible(True)
+        self.resume_button.setEnabled(False)
+        self.resume_button.setVisible(False)
+
+    def stop_puzzle_timer(self, reset_display: bool = False):
+        """Stop the elapsed time display."""
+        self.puzzle_timer.stop()
+        self.timer_running = False
+        self.pause_button.setEnabled(False)
+        self.pause_button.setVisible(False)
+        self.resume_button.setEnabled(False)
+        self.resume_button.setVisible(False)
+        if reset_display:
+            self.elapsed_seconds = 0
+            self.timer_label.setText("00:00")
+
+    def _update_timer_display(self):
+        """Advance the timer label each second while active."""
+        self.elapsed_seconds += 1
+        minutes, seconds = divmod(self.elapsed_seconds, 60)
+        self.timer_label.setText(f"{minutes:02d}:{seconds:02d}")
+
+    def pause_puzzle_timer(self):
+        """Pause the puzzle timer without resetting elapsed time."""
+        if not self.timer_running:
+            return
+        self.puzzle_timer.stop()
+        self.timer_running = False
+        self.pause_button.setEnabled(False)
+        self.pause_button.setVisible(False)
+        self.resume_button.setEnabled(True)
+        self.resume_button.setVisible(True)
+
+    def resume_puzzle_timer(self):
+        """Resume the puzzle timer if it was paused."""
+        if self.timer_running:
+            return
+        self.puzzle_timer.start()
+        self.timer_running = True
+        self.pause_button.setEnabled(True)
+        self.pause_button.setVisible(True)
+        self.resume_button.setEnabled(False)
+        self.resume_button.setVisible(False)
 
     def check_answers(self):
         """Check current answers"""

@@ -101,8 +101,19 @@ class IPUZParser:
                 puzzle_cell = puzzle_row[col_idx]
                 solution_char = solution_row[col_idx]
 
+                    
+
+
                 # Parse puzzle cell for clue numbers
                 if isinstance(puzzle_cell, dict) and 'cell' in puzzle_cell:
+                    # Handle shading/highlight styles
+                    style = puzzle_cell.get('style')
+                    if isinstance(style, dict):
+                        if style.get('highlight'):
+                            cell.is_shaded = True
+                        if style.get("shapebg") == "circle":
+                            cell.is_circled = True
+
                     clue_number = puzzle_cell['cell']
                     if clue_number > 0:
                         # White cell with a clue number
