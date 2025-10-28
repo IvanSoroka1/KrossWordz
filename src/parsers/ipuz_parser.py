@@ -339,17 +339,6 @@ class IPUZParser:
 
         return ""
 
-        # Find starting positions for each clue
-        for clue in clue_list:
-            if clue.number > 0:
-                clue.start_row, clue.start_col = self._find_clue_start(puzzle, clue, direction)
-
-        # Add to appropriate list
-        if direction == "across":
-            puzzle.across_clues = clue_list
-        else:
-            puzzle.down_clues = clue_list
-
     def _find_clue_start(self, puzzle: KrossWordPuzzle, clue: Clue, direction: str) -> tuple:
         """Find the starting position of a clue in the grid"""
         target_length = clue.length
