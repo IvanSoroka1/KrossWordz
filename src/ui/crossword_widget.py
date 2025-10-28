@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PySide6.QtCore import Qt, Signal, QPoint
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon
 from PySide6.QtWidgets import QWidget
 
 from models.krossword import KrossWordCell, KrossWordPuzzle
@@ -257,17 +257,16 @@ class KrossWordWidget(QWidget):
 
         has_input = bool(cell.user_input)
         has_solution = bool(cell.solution)
-        is_correct = (
-            has_input
-            and has_solution
-            and cell.user_input.upper() == cell.solution.upper()
-        )
 
         if has_input:
             text = cell.user_input.upper()
             text_rect = painter.fontMetrics().boundingRect(text)
             text_x = x + (self.cell_size - text_rect.width()) // 2
-            text_y = y + (self.cell_size + text_rect.height()) // 2 - 2
+            #text_y = y + (self.cell_size + text_rect.height()) // 2 - 2
+            padding = 1
+            baseline = self.cell_size - padding - painter.fontMetrics().descent()
+            text_y = y + baseline
+
 
             painter.save()
             if cell.correct:
@@ -282,6 +281,32 @@ class KrossWordWidget(QWidget):
             painter.setPen(QPen(Qt.red, 3))
             painter.drawLine(x + 2, y + 2, x + self.cell_size - 2, y + self.cell_size - 2)
             painter.restore()
+        
+        if cell.revealed:
+            painter.save()
+            painter.setBrush(QBrush(Qt.red))
+            painter.setPen(Qt.NoPen)
+            triangle = QPolygon(
+                [
+                    QPoint(x + self.cell_size, y),              # top-right corner
+                    QPoint(x + self.cell_size - 16, y),         # a bit to the left
+                    QPoint(x + self.cell_size, y + 16),         # a bit down the right edge
+                ]
+            )
+            painter.drawPolygon(triangle)
+            # draw small white circle in the triangle
+            circle_radius = 2
+            circle_center_x = x + self.cell_size - 6   
+            circle_center_y = y + 6
+
+            painter.setBrush(QBrush(Qt.white))
+            painter.drawEllipse(
+                QPoint(circle_center_x, circle_center_y),
+                circle_radius,
+                circle_radius,
+            )
+            painter.restore()
+
 
         if cell.clue_number:
             painter.setPen(QPen(Qt.darkBlue))
