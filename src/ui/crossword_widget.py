@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from PySide6.QtCore import Qt, Signal, QPoint
+from PySide6.QtCore import Qt, Signal, QPoint, QPointF
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon
 from PySide6.QtWidgets import QWidget
 
@@ -120,6 +120,7 @@ class KrossWordWidget(QWidget):
             return
 
         key = event.key()
+        mods = event.modifiers()
         print(f"DEBUG: KrossWordWidget keyPressEvent called with key: {key} ({Qt.Key_Tab})")
 
         if key == Qt.Key_Left:
@@ -151,7 +152,7 @@ class KrossWordWidget(QWidget):
             else:
                 self._move_down()
         elif Qt.Key_0 <= key <= Qt.Key_Z:
-            self._handle_letter_input(key)
+            self._handle_letter_input(key, mods & Qt.ShiftModifier)
         elif key in (Qt.Key_Backspace, Qt.Key_Delete):
             print(
                 "Backspace/Delete pressed. Current cell: "
@@ -258,8 +259,6 @@ class KrossWordWidget(QWidget):
         font = QFont("Arial", self.font_size + 8, QFont.Normal)
         painter.setFont(font)
 
-        has_input = bool(cell.user_input)
-        has_solution = bool(cell.solution)
 
         if cell.is_circled:
             painter.save()
@@ -267,13 +266,29 @@ class KrossWordWidget(QWidget):
             painter.drawEllipse(QPoint(x + self.cell_size / 2, y + self.cell_size / 2), self.cell_size/2-2 , self.cell_size/2-2 )
             painter.restore()
 
+        has_input = bool(cell.user_input)
+        has_solution = bool(cell.solution)
+
         if has_input:
             text = cell.user_input.upper()
-            text_rect = painter.fontMetrics().boundingRect(text)
-            text_x = x + (self.cell_size - text_rect.width()) // 2
-            #text_y = y + (self.cell_size + text_rect.height()) // 2 - 2
+            metrics = painter.fontMetrics()
+            text_rect = metrics.boundingRect(text)
+            max_text_width = self.cell_size - 4
+
+            if text_rect.width() > max_text_width:
+                # Shrink the font so multi-character rebus entries still fit inside the square.
+                font = painter.font()
+                current_size = font.pointSizeF() if font.pointSizeF() > 0 else float(font.pointSize())
+                # Scale to fit, but don't go below a legible minimum.
+                scaled_size = max(8.0, current_size * (max_text_width / text_rect.width()))
+                font.setPointSizeF(scaled_size)
+                painter.setFont(font)
+                metrics = painter.fontMetrics()
+                text_rect = metrics.boundingRect(text)
+
+            text_x = x + (self.cell_size - text_rect.width()) / 2.0
             padding = 1
-            baseline = self.cell_size - padding - painter.fontMetrics().descent()
+            baseline = self.cell_size - padding - metrics.descent()
             text_y = y + baseline
 
 
@@ -282,7 +297,7 @@ class KrossWordWidget(QWidget):
                 painter.setPen(QPen(Qt.blue))
             else:
                 painter.setPen(QPen(Qt.black))
-            painter.drawText(text_x, text_y, text)
+            painter.drawText(QPointF(text_x, text_y), text)
             painter.restore()
 
         if cell.incorrect and has_input and has_solution:
@@ -327,7 +342,7 @@ class KrossWordWidget(QWidget):
     # Movement helpers and editing
     # ------------------------------------------------------------------
 
-    def _handle_letter_input(self, key: int) -> None:
+    def _handle_letter_input(self, key: int, rebus: bool) -> None:
         cell = self.puzzle.cells[self.selected_row][self.selected_col]
         if cell.is_black:
             return
@@ -338,33 +353,33 @@ class KrossWordWidget(QWidget):
 
         if char:
             was_empty = cell.user_input == ""
-            print(
-                f"DEBUG: Typed '{char}' in cell ({self.selected_row}, {self.selected_col}), "
-                f"was_empty: {was_empty}"
-            )
-            cell.user_input = char
+            if rebus:
+                # if it's a rebus cell, add the character to the user input and don't move
+                cell.user_input += char
+            else:
+                cell.user_input = char
+                start, end = self._get_word_bounds(
+                    self.selected_row, self.selected_col, self.highlight_mode
+                )
+                is_last_character = False
 
-            start, end = self._get_word_bounds(
-                self.selected_row, self.selected_col, self.highlight_mode
-            )
-            is_last_character = False
+                if start and end:
+                    if self.highlight_mode == "across":
+                        is_last_character = self.selected_col == end[0]
+                    else:
+                        is_last_character = self.selected_row == end[1]
 
-            if start and end:
-                if self.highlight_mode == "across":
-                    is_last_character = self.selected_col == end[0]
-                else:
-                    is_last_character = self.selected_row == end[1]
-
-            if was_empty:
-                print("DEBUG: Cell was empty and not last character, moving to adjacent character")
-                self._loop_to_empty_in_entry(is_last_character)
-            elif not is_last_character:
-                print("DEBUG: Cell was filled and not last character, using regular movement")
-                if self.highlight_mode == "down":
-                    self._move_down()
-                else:
-                    self._move_right()
-
+                if was_empty:
+                    # if the current cell you're editing is empty, loop to the next empty cell
+                    self._loop_to_empty_in_entry(is_last_character)
+                elif not is_last_character:
+                    # if the current cell you're editing is not the last character in the entry and is not empty
+                    # move to the next cell
+                    if self.highlight_mode == "down":
+                        self._move_down()
+                    else:
+                        self._move_right()
+                # if the cell is not empty and it is the last cell then don't move
             self.value_changed.emit()
             self.update()
 
