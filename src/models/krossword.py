@@ -13,6 +13,7 @@ class KrossWordCell:
     revealed: bool = False
     is_circled: bool = False
     is_shaded: bool = False
+    pencilled = False
 
     def is_empty(self) -> bool:
         return self.user_input == "" or self.user_input == self.solution

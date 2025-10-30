@@ -1,7 +1,8 @@
 import os
+from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QFont
+from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QVBoxLayout,
     QWidget,
+    QSizePolicy,
 )
 
 from services.file_loader import FileLoaderService
@@ -23,6 +25,20 @@ from ui.tab_event_filter import TabEventFilter
 
 class MainWindow(QMainWindow):
     """Main application window"""
+
+    _ICON_BUTTON_STYLESHEET = (
+        "QPushButton { background-color: transparent; border: none; color: white; padding: 0; border-radius: 8px; }"
+        "QPushButton:hover { background-color: rgba(255, 255, 255, 0.12); color: white; }"
+        "QPushButton:pressed { background-color: rgba(255, 255, 255, 0.2); color: white; }"
+        "QPushButton:disabled { background-color: transparent; color: rgba(255, 255, 255, 0.4); }"
+    )
+
+    _ICON_BUTTON_ACTIVE_STYLESHEET = (
+        "QPushButton { background-color: rgba(255, 255, 255, 0.28); border: none; color: white; padding: 0; border-radius: 8px; }"
+        "QPushButton:hover { background-color: rgba(255, 255, 255, 0.35); color: white; }"
+        "QPushButton:pressed { background-color: rgba(255, 255, 255, 0.45); color: white; }"
+        "QPushButton:disabled { background-color: rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.6); }"
+    )
 
     def __init__(self):
         super().__init__()
@@ -116,28 +132,56 @@ class MainWindow(QMainWindow):
 
         # Timer display above current clue
         timer_row = QHBoxLayout()
+        timer_row.setAlignment(Qt.AlignVCenter)
         self.timer_label = QLabel("00:00")
         self.timer_label.setFont(QFont("Arial", 12, QFont.Bold))
-        self.timer_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.timer_label.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
         timer_row.addWidget(self.timer_label)
 
+        icon_size = QSize(24, 24)
+
         self.pause_button = QPushButton()
-        self.pause_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+        pause_icon = self._create_colored_icon(
+            self.style().standardIcon(QStyle.SP_MediaPause), QColor(Qt.white), icon_size
+        )
+        self.pause_button.setIcon(pause_icon)
         self.pause_button.setFixedSize(36, 36)
         self.pause_button.setToolTip("Pause timer")
         self.pause_button.setEnabled(False)
         self.pause_button.setVisible(False)
         self.pause_button.clicked.connect(self.pause_puzzle_timer)
+        self._style_icon_button(self.pause_button)
         timer_row.addWidget(self.pause_button)
 
         self.resume_button = QPushButton()
-        self.resume_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        resume_icon = self._create_colored_icon(
+            self.style().standardIcon(QStyle.SP_MediaPlay), QColor(Qt.white), icon_size
+        )
+        self.resume_button.setIcon(resume_icon)
         self.resume_button.setFixedSize(36, 36)
         self.resume_button.setToolTip("Resume timer")
         self.resume_button.setEnabled(False)
         self.resume_button.setVisible(False)
         self.resume_button.clicked.connect(self.resume_puzzle_timer)
+        self._style_icon_button(self.resume_button)
         timer_row.addWidget(self.resume_button)
+
+        self.pencil_button= QPushButton()
+        project_root = Path(__file__).resolve().parents[2]
+        pencil_icon_path = project_root / "assets" / "icons" / "mdi--pencil.svg"
+        pencil_icon = self._create_colored_icon(
+            QIcon(str(pencil_icon_path)), QColor(Qt.white), icon_size
+        )
+        self.pencil_button.setIcon(pencil_icon)
+        self.pencil_button.setFixedSize(36, 36)
+        self.pencil_button.setToolTip("Enable/disable pencil mode")
+        self.pencil_button.setEnabled(True)
+        self.pencil_button.setVisible(True)
+        self.pencil_button.clicked.connect(self.set_pencil_mode)
+        self._style_icon_button(self.pencil_button)
+        timer_row.addWidget(self.pencil_button)
+
+
 
         timer_row.addStretch()
         left_layout.addLayout(timer_row)
@@ -154,6 +198,7 @@ class MainWindow(QMainWindow):
         self.crossword_widget = KrossWordWidget()
         self.crossword_widget.cell_selected.connect(self.on_cell_selected)
         self.crossword_widget.value_changed.connect(self.raise_updated_signal)
+        self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
         self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
         left_layout.addWidget(self.crossword_widget)
 
@@ -185,6 +230,42 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(splitter)
         self.statusBar().showMessage("Ready")
+
+    def _style_icon_button(self, button: QPushButton) -> None:
+        """Apply a transparent style for icon-only buttons."""
+        button.setFlat(True)
+        button.setStyleSheet(self._ICON_BUTTON_STYLESHEET)
+        button.setIconSize(QSize(24, 24))
+        button.setContentsMargins(0, 0, 0, 0)
+        button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    def _create_colored_icon(self, icon: QIcon, color: QColor, size: QSize) -> QIcon:
+        """Return a tinted copy of the provided icon."""
+        pixmap = icon.pixmap(size)
+        if pixmap.isNull():
+            return icon
+
+        tinted_pixmap = self._tint_pixmap(pixmap, color)
+        tinted_pixmap.setDevicePixelRatio(pixmap.devicePixelRatio())
+
+        tinted_icon = QIcon()
+        for mode in (QIcon.Normal, QIcon.Active, QIcon.Disabled):
+            tinted_icon.addPixmap(tinted_pixmap, mode, QIcon.Off)
+        return tinted_icon
+
+    def _tint_pixmap(self, source: QPixmap, color: QColor) -> QPixmap:
+        """Apply a color tint to a pixmap using source-in compositing."""
+        ratio = source.devicePixelRatio()
+        tinted = QPixmap(source.size())
+        tinted.setDevicePixelRatio(ratio)
+        tinted.fill(Qt.transparent)
+        painter = QPainter(tinted)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.drawPixmap(0, 0, source)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(tinted.rect(), color)
+        painter.end()
+        return tinted
 
     def load_puzzle(self):
         """Load a puzzle using a file dialog"""
@@ -266,6 +347,16 @@ class MainWindow(QMainWindow):
                 if not cell.is_black and cell.solution:
                     cell.reveal()
         self.crossword_widget.update()
+
+    def set_pencil_mode(self):
+        """Toggle pencil mode and update button styling."""
+        pencil_mode = self.crossword_widget.set_pencil_mode()
+        stylesheet = (
+            self._ICON_BUTTON_ACTIVE_STYLESHEET
+            if pencil_mode
+            else self._ICON_BUTTON_STYLESHEET
+        )
+        self.pencil_button.setStyleSheet(stylesheet)
 
     def start_puzzle_timer(self):
         """Start or restart the elapsed time display."""

@@ -13,6 +13,7 @@ class KrossWordWidget(QWidget):
     """Widget for displaying and interacting with a crossword puzzle."""
 
     cell_selected = Signal(int, int)  # row, col
+    pencil_mode_toggle_requested = Signal()
     value_changed = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -21,6 +22,7 @@ class KrossWordWidget(QWidget):
         self.selected_row = 0
         self.selected_col = 0
         self.highlight_mode = "across"  # "across" or "down"
+        self.pencil_mode = False
         self.font_size = 16
         self.cell_size = 40
         self.setMouseTracking(True)
@@ -151,6 +153,9 @@ class KrossWordWidget(QWidget):
                 self.update()
             else:
                 self._move_down()
+        elif key == Qt.Key_Period:
+            self.pencil_mode_toggle_requested.emit()
+            return
         elif Qt.Key_0 <= key <= Qt.Key_Z:
             self._handle_letter_input(key, mods & Qt.ShiftModifier)
         elif key in (Qt.Key_Backspace, Qt.Key_Delete):
@@ -295,6 +300,8 @@ class KrossWordWidget(QWidget):
             painter.save()
             if cell.correct:
                 painter.setPen(QPen(Qt.blue))
+            elif cell.pencilled:
+                painter.setPen(QPen(Qt.gray))
             else:
                 painter.setPen(QPen(Qt.black))
             painter.drawText(QPointF(text_x, text_y), text)
@@ -353,6 +360,11 @@ class KrossWordWidget(QWidget):
 
         if char:
             was_empty = cell.user_input == ""
+            if self.pencil_mode:
+                cell.pencilled = True
+            else:
+                cell.pencilled = False
+
             if rebus:
                 # if it's a rebus cell, add the character to the user input and don't move
                 cell.user_input += char
@@ -810,6 +822,10 @@ class KrossWordWidget(QWidget):
                 end_row += 1
 
         return (start_col, start_row), (end_col, end_row)
+
+    def set_pencil_mode(self):
+        self.pencil_mode = not self.pencil_mode
+        return self.pencil_mode
 
     def _find_word_start_in_widget(self, row: int, col: int, direction: str):
         if direction == "across":
