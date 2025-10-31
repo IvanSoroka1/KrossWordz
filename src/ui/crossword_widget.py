@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from PySide6.QtCore import Qt, Signal, QPoint, QPointF
+from PySide6.QtCore import Qt, Signal, QPoint, QPointF, QRectF
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon
 from PySide6.QtWidgets import QWidget
 
@@ -25,11 +25,7 @@ class KrossWordWidget(QWidget):
         self.pencil_mode = False
         self.font_size = 16
 
-        self.widgetWidth = 400
-        self.widgetHeight = 400
-
         self.cell_size = None
-
 
         self.setMouseTracking(True)
         self.setMinimumSize(200, 200)
@@ -66,9 +62,7 @@ class KrossWordWidget(QWidget):
         cell_width = max(1, available_width // self.puzzle.width)
         cell_height = max(1, available_height // self.puzzle.height)
         self.cell_size = max(1, min(cell_width, cell_height))
-
-        self.widgetWidth = self.cell_size * self.puzzle.width
-        self.widgetHeight = self.cell_size * self.puzzle.height
+        self.font_size = int(self.cell_size * 0.65)
 
     def get_current_cell(self) -> Optional[KrossWordCell]:
         if self.puzzle and 0 <= self.selected_row < self.puzzle.height:
@@ -290,7 +284,8 @@ class KrossWordWidget(QWidget):
                     painter.fillRect(x, y, self.cell_size, self.cell_size, QBrush(Qt.white))
 
         painter.setPen(QPen(Qt.black))
-        font = QFont("Arial", self.font_size + 8, QFont.Normal)
+        #font = QFont("Arial Light", self.font_size, QFont.Light)
+        font = QFont("Arial", self.font_size, QFont.Normal)
         painter.setFont(font)
 
 
@@ -321,8 +316,9 @@ class KrossWordWidget(QWidget):
                 text_rect = metrics.boundingRect(text)
 
             text_x = x + (self.cell_size - text_rect.width()) / 2.0
-            padding = 1
-            baseline = self.cell_size - padding - metrics.descent()
+            #padding = 1
+            #baseline = self.cell_size - padding - metrics.descent()
+            baseline = self.cell_size - metrics.descent()
             text_y = y + baseline
 
 
@@ -369,10 +365,16 @@ class KrossWordWidget(QWidget):
 
 
         if cell.clue_number:
-            painter.setPen(QPen(Qt.darkBlue))
-            small_font = QFont("Arial", 8)
+            painter.setPen(QPen(Qt.black))
+            small_font = QFont("Arial")
+            small_font.setPointSizeF(self.cell_size * 0.25)
             painter.setFont(small_font)
-            painter.drawText(x + 2, y + 12, str(cell.clue_number))
+            padding = self.cell_size * 0.1
+            painter.drawText(
+                QRectF(x + padding, y + padding, self.cell_size / 2, self.cell_size / 2),
+                Qt.AlignLeft | Qt.AlignTop,
+                str(cell.clue_number),
+            )
 
     # ------------------------------------------------------------------
     # Movement helpers and editing
