@@ -396,6 +396,9 @@ class KrossWordWidget(QWidget):
             else:
                 cell.pencilled = False
 
+            if cell.incorrect:
+                cell.incorrect = False
+
             if rebus:
                 # if it's a rebus cell, add the character to the user input and don't move
                 cell.user_input += char
@@ -527,6 +530,7 @@ class KrossWordWidget(QWidget):
                         self.value_changed.emit()
                         if prev_cell.incorrect:
                             prev_cell.incorrect = False
+                    self.cell_selected.emit(self.selected_row, self.selected_col)
 
                 else:
                     print("Could not find a valid previous cell")
