@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
-    QSplitter,
     QStyle,
     QVBoxLayout,
     QWidget,
@@ -122,17 +121,20 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         layout = QHBoxLayout(central_widget)
-
-        # Create splitter for resizable panels
-        splitter = QSplitter(Qt.Horizontal)
+        layout.setSpacing(-1)
+        layout.setContentsMargins(-1, -1, -1, -1)
 
         # Left panel: Crossword and current clue
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
+        left_layout.setSpacing(-1)
+        left_layout.setContentsMargins(-1, -1, -1, -1)
 
         # Timer display above current clue
         timer_row = QHBoxLayout()
         timer_row.setAlignment(Qt.AlignVCenter)
+        timer_row.setContentsMargins(-1, -1, -1, -1)
+        timer_row.setSpacing(-1)
         self.timer_label = QLabel("00:00")
         self.timer_label.setFont(QFont("Arial", 12, QFont.Bold))
         self.timer_label.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
@@ -191,7 +193,7 @@ class MainWindow(QMainWindow):
         self.current_clue_label.setFont(QFont("Arial", 12, QFont.Bold))
         self.current_clue_label.setWordWrap(True)
         self.current_clue_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        self.current_clue_label.setMinimumHeight(30)
+        #self.current_clue_label.setMinimumHeight(30)
         left_layout.addWidget(self.current_clue_label)
 
         # Crossword grid
@@ -201,10 +203,13 @@ class MainWindow(QMainWindow):
         self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
         self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
         left_layout.addWidget(self.crossword_widget)
+        left_layout.setStretchFactor(self.crossword_widget, 1)
 
         # Right panel: puzzle info, clues, and actions
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
+        right_layout.setSpacing(-1)
+        right_layout.setContentsMargins(-1, -1, -1, -1)
 
         self.title_label = QLabel("No puzzle loaded")
         self.title_label.setFont(QFont("Arial", 16, QFont.Bold))
@@ -220,16 +225,14 @@ class MainWindow(QMainWindow):
 
         self.clues_panel = CluesPanel()
         right_layout.addWidget(self.clues_panel)
+        right_layout.setStretchFactor(self.clues_panel, 1)
 
         right_layout.addStretch()
 
-        # Add panels to splitter
-        splitter.addWidget(left_panel)
-        splitter.addWidget(right_panel)
-        splitter.setSizes([600, 800])
-
-        layout.addWidget(splitter)
-        self.statusBar().showMessage("Ready")
+        layout.addWidget(left_panel)
+        layout.addWidget(right_panel)
+        layout.setStretch(0, 3)
+        layout.setStretch(1, 2)
 
     def _style_icon_button(self, button: QPushButton) -> None:
         """Apply a transparent style for icon-only buttons."""
@@ -289,7 +292,6 @@ class MainWindow(QMainWindow):
             self.update_clues_display()
             self.update_title_label()
             self.start_puzzle_timer()
-            self.statusBar().showMessage(f"Loaded: {self.current_puzzle.title}")
             return True
         except Exception as e:
             if show_error_dialog:
@@ -333,7 +335,6 @@ class MainWindow(QMainWindow):
                 with open(file_path, 'w') as f:
                     json.dump(puzzle_data, f, indent=2)
 
-                self.statusBar().showMessage("Progress saved successfully")
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")
 
@@ -459,7 +460,6 @@ class MainWindow(QMainWindow):
             return
         position = self.crossword_widget.get_current_position()
         if not position:
-            self.statusBar().showMessage("Select a cell within a word to reveal", 3000)
             return
         word_cells = self.crossword_widget.get_current_word_coordinates()
         for cell_row, cell_col in word_cells:
@@ -476,7 +476,6 @@ class MainWindow(QMainWindow):
             return
         position = self.crossword_widget.get_current_position()
         if not position:
-            self.statusBar().showMessage("Select a cell within a word to check", 3000)
             return
         word_cells = self.crossword_widget.get_current_word_coordinates()
         for cell_row, cell_col in word_cells:
@@ -530,19 +529,6 @@ class MainWindow(QMainWindow):
         # Always update current clue display, regardless of whether cell has a number
         self._update_current_clue_display(row, col)
 
-        if cell and cell.clue_number:
-            # Show clue for selected cell number in status bar
-            clue_text = f"Cell {row},{col} - Clue #{cell.clue_number}"
-
-            across_clue = self.current_puzzle.get_clue(cell.clue_number, "across")
-            down_clue = self.current_puzzle.get_clue(cell.clue_number, "down")
-
-            if across_clue and self._has_cell_in_direction(row, col, "across"):
-                clue_text += f" (Across: {across_clue.text})"
-            if down_clue and self._has_cell_in_direction(row, col, "down"):
-                clue_text += f" (Down: {down_clue.text})"
-
-            self.statusBar().showMessage(clue_text, 3000)  # Show for 3 seconds)
 
     def _has_cell_in_direction(self, row, col, direction):
         """Check if a cell is part of a clue in the given direction"""

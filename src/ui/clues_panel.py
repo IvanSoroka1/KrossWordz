@@ -16,7 +16,6 @@ class CluesTextEdit(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
-        self.setMinimumSize(400, 250)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     def keyPressEvent(self, event):  # noqa: N802 (Qt interface)

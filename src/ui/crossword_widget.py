@@ -24,9 +24,15 @@ class KrossWordWidget(QWidget):
         self.highlight_mode = "across"  # "across" or "down"
         self.pencil_mode = False
         self.font_size = 16
-        self.cell_size = 40
+
+        self.widgetWidth = 400
+        self.widgetHeight = 400
+
+        self.cell_size = None
+
+
         self.setMouseTracking(True)
-        self.setMinimumSize(400, 400)
+        self.setMinimumSize(200, 200)
         print("DEBUG: KrossWordWidget initialized")
         self.setFocusPolicy(Qt.StrongFocus)
 
@@ -36,10 +42,33 @@ class KrossWordWidget(QWidget):
 
     def set_puzzle(self, puzzle: KrossWordPuzzle) -> None:
         self.puzzle = puzzle
-        widget_width = max(400, self.puzzle.width * self.cell_size)
-        widget_height = max(400, self.puzzle.height * self.cell_size + 50)
-        self.setMinimumSize(widget_width, widget_height)
+        self._recompute_cell_metrics()
         self.update()
+
+    def resizeEvent(self, event):  # noqa: N802
+        super().resizeEvent(event)
+        if self.puzzle:
+            self._recompute_cell_metrics()
+            self.update()
+
+    def _recompute_cell_metrics(self) -> None:
+        """Update cell size based on the current widget dimensions."""
+        if not self.puzzle or self.puzzle.width <= 0 or self.puzzle.height <= 0:
+            return
+
+        rect = self.contentsRect()
+        available_width = rect.width() or self.width()
+        available_height = rect.height() or self.height()
+
+        if available_width <= 0 or available_height <= 0:
+            return
+
+        cell_width = max(1, available_width // self.puzzle.width)
+        cell_height = max(1, available_height // self.puzzle.height)
+        self.cell_size = max(1, min(cell_width, cell_height))
+
+        self.widgetWidth = self.cell_size * self.puzzle.width
+        self.widgetHeight = self.cell_size * self.puzzle.height
 
     def get_current_cell(self) -> Optional[KrossWordCell]:
         if self.puzzle and 0 <= self.selected_row < self.puzzle.height:
