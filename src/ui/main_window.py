@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QSize
-from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap
+from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -45,10 +45,12 @@ class MainWindow(QMainWindow):
         self.current_puzzle = None
         self.elapsed_seconds = 0
         self.timer_running = False
+        self.layout = None
         self.init_ui()
         self.puzzle_timer = QTimer(self)
         self.puzzle_timer.setInterval(1000)
         self.puzzle_timer.timeout.connect(self._update_timer_display)
+        self.clues_panel = None
         # Create and install global event filter for tab key handling
         self.tab_event_filter = TabEventFilter(self.crossword_widget)
         QApplication.instance().installEventFilter(self.tab_event_filter)
@@ -120,9 +122,9 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        layout = QHBoxLayout(central_widget)
-        layout.setSpacing(-1)
-        layout.setContentsMargins(-1, -1, -1, -1)
+        self.layout = QHBoxLayout(central_widget)
+        self.layout.setSpacing(-1)
+        self.layout.setContentsMargins(-1, -1, -1, -1)
 
         # Left panel: Crossword and current clue
         left_panel = QWidget()
@@ -183,8 +185,6 @@ class MainWindow(QMainWindow):
         self._style_icon_button(self.pencil_button)
         timer_row.addWidget(self.pencil_button)
 
-
-
         timer_row.addStretch()
         left_layout.addLayout(timer_row)
 
@@ -206,33 +206,9 @@ class MainWindow(QMainWindow):
         left_layout.setStretchFactor(self.crossword_widget, 1)
 
         # Right panel: puzzle info, clues, and actions
-        right_panel = QWidget()
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.setSpacing(-1)
-        right_layout.setContentsMargins(-1, -1, -1, -1)
 
-        self.title_label = QLabel("No puzzle loaded")
-        self.title_label.setFont(QFont("Arial", 16, QFont.Bold))
-        self.title_label.setWordWrap(True)
-        right_layout.addWidget(self.title_label)
-
-        self.author_label = QLabel("")
-        self.author_label.setFont(QFont("Arial", 11))
-        self.author_label.setWordWrap(True)
-        right_layout.addWidget(self.author_label)
-
-        right_layout.addSpacing(10)
-
-        self.clues_panel = CluesPanel()
-        right_layout.addWidget(self.clues_panel)
-        right_layout.setStretchFactor(self.clues_panel, 1)
-
-        right_layout.addStretch()
-
-        layout.addWidget(left_panel)
-        layout.addWidget(right_panel)
-        layout.setStretch(0, 3)
-        layout.setStretch(1, 2)
+        self.layout.addWidget(left_panel)
+        self.layout.setStretch(0, 3)
 
     def _style_icon_button(self, button: QPushButton) -> None:
         """Apply a transparent style for icon-only buttons."""
@@ -279,6 +255,7 @@ class MainWindow(QMainWindow):
         if file_path:
             self.load_puzzle_from_path(file_path)
 
+
     def load_puzzle_from_path(self, file_path: str, show_error_dialog: bool = True) -> bool:
         """Load a puzzle from an explicit filesystem path"""
         if not file_path:
@@ -289,7 +266,34 @@ class MainWindow(QMainWindow):
         try:
             self.current_puzzle = self.file_loader_service.load_ipuz_file(normalized_path)
             self.crossword_widget.set_puzzle(self.current_puzzle)
-            self.update_clues_display()
+
+            right_panel = QWidget()
+            right_layout = QVBoxLayout()
+            right_layout.setSpacing(-1)
+            right_layout.setContentsMargins(-1, -1, -1, -1)
+            right_panel.setLayout(right_layout)
+
+            self.title_label = QLabel("No puzzle loaded")
+            self.title_label.setFont(QFont("Arial", 16, QFont.Bold))
+            self.title_label.setWordWrap(True)
+            right_layout.addWidget(self.title_label)
+
+            self.author_label = QLabel("")
+            self.author_label.setFont(QFont("Arial", 11))
+            self.author_label.setWordWrap(True)
+            right_layout.addWidget(self.author_label)
+
+            right_layout.addSpacing(10)
+
+            self.clues_panel = CluesPanel(self.crossword_widget.puzzle.across_clues, self.crossword_widget.puzzle.down_clues)
+
+            right_layout.addWidget(self.clues_panel)
+            right_layout.setStretchFactor(self.clues_panel, 1)
+
+            right_layout.addStretch()
+            self.layout.addWidget(right_panel)
+
+            self.layout.setStretch(1, 2)
             self.update_title_label()
             self.start_puzzle_timer()
             return True
@@ -491,23 +495,6 @@ class MainWindow(QMainWindow):
 
         self.crossword_widget.update()
 
-    def update_clues_display(self):
-        """Update the clues display with separate across and down sections"""
-        if not self.current_puzzle:
-            self.clues_panel.clear()
-            return
-
-        # Update across clues
-        across_text = ""
-        for clue in sorted(self.current_puzzle.across_clues, key=lambda x: x.number):
-            across_text += f"{clue.number}. {clue.text}\n\n"
-        self.clues_panel.set_across_text(across_text.strip())
-
-        # Update down clues
-        down_text = ""
-        for clue in sorted(self.current_puzzle.down_clues, key=lambda x: x.number):
-            down_text += f"{clue.number}. {clue.text}\n\n"
-        self.clues_panel.set_down_text(down_text.strip())
 
     def update_title_label(self):
         """Update the title label with puzzle info"""
@@ -528,6 +515,24 @@ class MainWindow(QMainWindow):
 
         # Always update current clue display, regardless of whether cell has a number
         self._update_current_clue_display(row, col)
+        self._update_clues_highlight(row, col)
+    
+    def _update_clues_highlight(self, row, col):
+        if not self.current_puzzle or not self.clues_panel:
+            return
+
+        direction = self.crossword_widget.highlight_mode
+        
+        # this should never happen. So can I just delete this?
+        if direction not in ("across", "down"):
+            self.clues_panel.clear_highlight()
+            return
+
+        clue = self._find_clue_for_cell(row, col, direction)
+        if clue:
+            self.clues_panel.highlight_clue(clue.number, clue.direction)
+        else:
+            self.clues_panel.clear_highlight()
 
 
     def _has_cell_in_direction(self, row, col, direction):
