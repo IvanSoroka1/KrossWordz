@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QPoint, QTimer, QEasingCurve
+from PySide6.QtCore import Qt, QPoint, QTimer, QEasingCurve, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QWidget,
@@ -14,11 +14,15 @@ from PySide6.QtWidgets import (
 class CluesTextEdit(QTextEdit):
     """Text edit styled for clues that forwards navigation keys to the parent."""
 
-    def __init__(self, parent=None):
+    selectClue = Signal(int, str)
+
+    def __init__(self, number, direction, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._default_stylesheet = self.styleSheet()
+        self.number = number
+        self.direction = direction
 
     def keyPressEvent(self, event):  # noqa: N802 (Qt interface)
         if event.key() in (
@@ -33,15 +37,23 @@ class CluesTextEdit(QTextEdit):
         else:
             super().keyPressEvent(event)
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.selectClue.emit(self.number, self.direction)
+        super().mousePressEvent(event)
+
+
     def set_highlighted(self, highlighted: bool) -> None:
         """Toggle highlight coloring on the text edit background."""
         if highlighted:
-            self.setStyleSheet("background-color: khaki;")
+            self.setStyleSheet("background-color: #47c8ff;")
         else:
             self.setStyleSheet(self._default_stylesheet)
 
 
 class CluesPanel(QWidget):
+    clue_selected = Signal(int, str)
+
     """Container showing across and down clues side by side."""
 
     def __init__(self, across_clues: list[str], down_clues: list[str], parent=None):
@@ -85,7 +97,8 @@ class CluesPanel(QWidget):
         last_text_edit = None
 
         for clue in clues:
-            text_edit = CluesTextEdit(scroll_content)
+            text_edit = CluesTextEdit(clue.number, clue.direction, scroll_content)
+            text_edit.selectClue.connect(self._handle_clue_click)
             self.clues[(clue.number, clue.direction)] = text_edit
             text_edit.setText(clue.text)
             scroll_layout.addWidget(text_edit)
@@ -124,6 +137,11 @@ class CluesPanel(QWidget):
         if self._highlighted_key and self._highlighted_key in self.clues:
             self.clues[self._highlighted_key].set_highlighted(False)
         self._highlighted_key = None
+
+    def _handle_clue_click(self, number: int, direction: str) -> None:
+        """React to clue clicks by highlighting and bubbling the event."""
+        self.highlight_clue(number, direction)
+        self.clue_selected.emit(number, direction)
 
     def _scroll_clue_into_view(self, direction: str, text_edit: CluesTextEdit) -> None:
         """Scroll the appropriate area so the clue appears at the top."""

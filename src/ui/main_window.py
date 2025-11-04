@@ -286,7 +286,7 @@ class MainWindow(QMainWindow):
             right_layout.addSpacing(10)
 
             self.clues_panel = CluesPanel(self.crossword_widget.puzzle.across_clues, self.crossword_widget.puzzle.down_clues)
-
+            self.clues_panel.clue_selected.connect(self.crossword_widget.on_clue_selected)
             right_layout.addWidget(self.clues_panel)
             right_layout.setStretchFactor(self.clues_panel, 1)
 
