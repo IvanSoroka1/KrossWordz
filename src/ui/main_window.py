@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QSize
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.file_loader_service = FileLoaderService()
         self.current_puzzle = None
+        self.current_puzzle_path = None
         self.elapsed_seconds = 0
         self.timer_running = False
         self.layout = None
@@ -262,9 +264,11 @@ class MainWindow(QMainWindow):
             return False
 
         normalized_path = os.path.abspath(os.path.expanduser(file_path))
+        self.current_puzzle_path = None
 
         try:
             self.current_puzzle = self.file_loader_service.load_ipuz_file(normalized_path)
+            self.current_puzzle_path = normalized_path
             self.crossword_widget.set_puzzle(self.current_puzzle)
 
             right_panel = QWidget()
@@ -302,6 +306,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", f"Failed to load puzzle:\n{e}")
             else:
                 print(f"Failed to load puzzle from {normalized_path}: {e}")
+            self.current_puzzle_path = None
             return False
 
     def save_progress(self):
@@ -309,38 +314,32 @@ class MainWindow(QMainWindow):
         if not self.current_puzzle:
             QMessageBox.warning(self, "Warning", "No puzzle loaded to save")
             return
+        if not self.current_puzzle_path:
+            QMessageBox.warning(self, "Warning", "Original puzzle file path not available")
+            return
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Progress", "", "JSON Files (*.json);;All Files (*)"
-        )
+        try:
+            # Convert to serializable format
+            saved = []
+            for row in self.current_puzzle.cells:
+                row_data = []
+                for cell in row:
+                    if cell.is_black:
+                        row_data.append('#')
+                    else:
+                        row_data.append(cell.user_input)
+                saved.append(row_data)
 
-        if file_path:
-            try:
-                # Convert to serializable format
-                puzzle_data = {
-                    'title': self.current_puzzle.title,
-                    'author': self.current_puzzle.author,
-                    'grid': []
-                }
+            with open(self.current_puzzle_path, "r", encoding="utf-8") as f:
+                puzzle_data = json.load(f)
 
-                for row in self.current_puzzle.cells:
-                    row_data = []
-                    for cell in row:
-                        if cell.is_black:
-                            row_data.append('#')
-                        else:
-                            cell_data = {'solution': cell.solution, 'user_input': cell.user_input}
-                            if cell.clue_number:
-                                cell_data['number'] = cell.clue_number
-                            row_data.append(cell_data)
-                    puzzle_data['grid'].append(row_data)
+            puzzle_data["saved"] = saved
 
-                import json
-                with open(file_path, 'w') as f:
-                    json.dump(puzzle_data, f, indent=2)
+            with open(self.current_puzzle_path, "w", encoding="utf-8") as f:
+                json.dump(puzzle_data, f, indent=2)
 
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")
 
     def on_clue_selected(self, number, direction):
         if not self.crossword_widget.puzzle:
