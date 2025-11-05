@@ -1,5 +1,7 @@
+import math
+
 from PySide6.QtCore import Qt, QPoint, QTimer, QEasingCurve, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -8,6 +10,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTextEdit,
     QScrollArea,
+    QAbstractScrollArea,
 )
 
 
@@ -19,10 +22,20 @@ class CluesTextEdit(QTextEdit):
     def __init__(self, number, direction, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setAlignment(Qt.AlignCenter)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.document().setDocumentMargin(3)
         self._default_stylesheet = self.styleSheet()
         self.number = number
         self.direction = direction
+
+    def setText(self, text):
+        super().setText(text)
+        self._apply_center_alignment()
+        self._shrink_to_fit()
 
     def keyPressEvent(self, event):  # noqa: N802 (Qt interface)
         if event.key() in (
@@ -50,6 +63,28 @@ class CluesTextEdit(QTextEdit):
         else:
             self.setStyleSheet(self._default_stylesheet)
 
+    def _apply_center_alignment(self) -> None:
+        cursor = self.textCursor()
+        cursor.beginEditBlock()
+        cursor.select(QTextCursor.Document)
+        block_format = cursor.blockFormat()
+        block_format.setAlignment(Qt.AlignCenter)
+        cursor.mergeBlockFormat(block_format)
+        cursor.clearSelection()
+        cursor.endEditBlock()
+        self.setTextCursor(cursor)
+
+    def _shrink_to_fit(self) -> None:
+        self.document().adjustSize()
+        doc = self.document()
+        margins = self.contentsMargins()
+        frame = self.frameWidth() * 2
+
+        height = math.ceil(max(doc.size().height(), self.fontMetrics().height()))
+        height += margins.top() + margins.bottom() + frame
+
+        self.setFixedHeight(height)
+
 
 class CluesPanel(QWidget):
     clue_selected = Signal(int, str)
@@ -63,10 +98,15 @@ class CluesPanel(QWidget):
         layout.setSpacing(10)
         self.setLayout(layout)
         self.clues = dict()
+        self.clueSides = dict()
         self._scroll_areas = dict()
         self._highlighted_key = None
+        self._side_highlighted_key = None
+        self.highlight_color = "#47c8ff"
+        self.default_color = "#868686"
         self.across_text_edit = self._create_section(layout, "ACROSS", across_clues)
         self.down_text_edit = self._create_section(layout, "DOWN", down_clues)
+
 
     def _create_section(self, parent_layout: QHBoxLayout, title: str, clues: list[str] ) -> CluesTextEdit:
         container = QWidget(self)
@@ -97,11 +137,19 @@ class CluesPanel(QWidget):
         last_text_edit = None
 
         for clue in clues:
+            clue_layout = QHBoxLayout()
+            sideBox = QWidget()
+            sideBox.setStyleSheet(f"background-color: {self.default_color};") 
+            sideBox.setFixedWidth(12)
             text_edit = CluesTextEdit(clue.number, clue.direction, scroll_content)
             text_edit.selectClue.connect(self._handle_clue_click)
             self.clues[(clue.number, clue.direction)] = text_edit
+            self.clueSides[(clue.number, clue.direction)] = sideBox
             text_edit.setText(clue.text)
-            scroll_layout.addWidget(text_edit)
+
+            clue_layout.addWidget(sideBox)  
+            clue_layout.addWidget(text_edit)
+            scroll_layout.addLayout(clue_layout)
             last_text_edit = text_edit
 
         scroll_layout.addStretch()
@@ -131,6 +179,24 @@ class CluesPanel(QWidget):
             self._scroll_clue_into_view(direction, text_edit)
         else:
             self._highlighted_key = None
+    
+    def highlight_clue_side(self, number: int, direction: str) -> None:
+        key = (number, direction)
+        sideBox = self.clueSides.get(key)
+        if key == self._side_highlighted_key:
+            if sideBox:
+                self._scroll_clue_into_view(direction, sideBox)
+            return
+
+        if self._side_highlighted_key and self._side_highlighted_key in self.clueSides:
+            self.clueSides[self._side_highlighted_key].setStyleSheet(f"background-color: {self.default_color};")
+
+        if sideBox:
+            sideBox.setStyleSheet(f"background-color: {self.highlight_color};")
+            self._side_highlighted_key = key
+            self._scroll_clue_into_view(direction, sideBox)
+        else:
+            self._side_highlighted_key = None
 
     def clear_highlight(self) -> None:
         """Remove highlight from the currently highlighted clue, if any."""

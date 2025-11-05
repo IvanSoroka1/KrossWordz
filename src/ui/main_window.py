@@ -286,7 +286,7 @@ class MainWindow(QMainWindow):
             right_layout.addSpacing(10)
 
             self.clues_panel = CluesPanel(self.crossword_widget.puzzle.across_clues, self.crossword_widget.puzzle.down_clues)
-            self.clues_panel.clue_selected.connect(self.crossword_widget.on_clue_selected)
+            self.clues_panel.clue_selected.connect(self.on_clue_selected)
             right_layout.addWidget(self.clues_panel)
             right_layout.setStretchFactor(self.clues_panel, 1)
 
@@ -341,6 +341,27 @@ class MainWindow(QMainWindow):
 
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")
+
+    def on_clue_selected(self, number, direction):
+        if not self.crossword_widget.puzzle:
+            return
+
+        clue = self.crossword_widget.puzzle.get_clue(number, direction)
+
+        self.crossword_widget.highlight_mode = direction
+        self.crossword_widget.selected_row = clue.start_row
+        self.crossword_widget.selected_col = clue.start_col
+
+        opposite_direction = "across" if direction == "down" else "down"
+        start_row, start_col = self._find_word_start(self.crossword_widget.selected_row, self.crossword_widget.selected_col, opposite_direction)
+        opposite_direction_clue = self._find_clue_for_cell(start_row, start_col, opposite_direction)
+
+        if opposite_direction_clue:
+            self.clues_panel.highlight_clue_side(opposite_direction_clue.number, opposite_direction_clue.direction) 
+
+        self.crossword_widget.setFocus(Qt.MouseFocusReason)
+        self._update_current_clue_display(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
+        self.crossword_widget.update()
 
     def reveal_answers(self):
         """Reveal current answers"""
@@ -529,6 +550,12 @@ class MainWindow(QMainWindow):
             return
 
         clue = self._find_clue_for_cell(row, col, direction)
+        opposite_direction = "across" if direction == "down" else "down"
+        start_row, start_col = self._find_word_start(row, col, opposite_direction)
+        opposite_direction_clue = self._find_clue_for_cell(start_row, start_col, opposite_direction)
+
+        if opposite_direction_clue:
+            self.clues_panel.highlight_clue_side(opposite_direction_clue.number, opposite_direction_clue.direction)
         if clue:
             self.clues_panel.highlight_clue(clue.number, clue.direction)
         else:

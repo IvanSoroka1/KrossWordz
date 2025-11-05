@@ -196,19 +196,6 @@ class KrossWordWidget(QWidget):
         else:
             super().keyPressEvent(event)
 
-    def on_clue_selected(self, number, direction):
-        if not self.puzzle:
-            return
-
-        clue = self.puzzle.get_clue(number, direction)
-        if not clue:
-            return
-
-        self.highlight_mode = direction
-        self.selected_row = clue.start_row
-        self.selected_col = clue.start_col
-        self.setFocus(Qt.MouseFocusReason)
-        self.update()
 
 
     # ------------------------------------------------------------------
