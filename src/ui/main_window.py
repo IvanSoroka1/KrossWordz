@@ -2,9 +2,12 @@ import os
 import json
 from pathlib import Path
 
+from ui.message_dialog import show_message
+
 from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap, QPalette
 from PySide6.QtWidgets import (
+    QDialog,
     QApplication,
     QFileDialog,
     QLabel,
@@ -202,6 +205,8 @@ class MainWindow(QMainWindow):
         self.crossword_widget = KrossWordWidget()
         self.crossword_widget.cell_selected.connect(self.on_cell_selected)
         self.crossword_widget.value_changed.connect(self.raise_updated_signal)
+        self.crossword_widget.display_message.connect(self.display_message)
+
         self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
         self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
         left_layout.addWidget(self.crossword_widget)
@@ -211,6 +216,14 @@ class MainWindow(QMainWindow):
 
         self.layout.addWidget(left_panel)
         self.layout.setStretch(0, 3)
+
+        
+
+    def display_message(self, correctness):
+        self.pause_puzzle_timer()
+        self.resume_button.setVisible(False)
+        self.pause_button.setVisible(False)
+        show_message(self, correctness)
 
     def _style_icon_button(self, button: QPushButton) -> None:
         """Apply a transparent style for icon-only buttons."""
@@ -371,6 +384,8 @@ class MainWindow(QMainWindow):
             for cell in row:
                 if not cell.is_black and cell.solution:
                     cell.reveal()
+        self.crossword_widge.filled_cells = self.crossword_widget.puzzle.fillable_cell_count
+        self.display_message(True)
         self.crossword_widget.update()
 
     def set_pencil_mode(self):
@@ -446,7 +461,7 @@ class MainWindow(QMainWindow):
                 if not cell or cell.is_black or not cell.user_input:
                     continue
                 if cell.is_correct():
-                    cell.correct = True
+                    cell.corrected = True
                 else:
                     cell.incorrect = True
 
@@ -461,7 +476,7 @@ class MainWindow(QMainWindow):
         if not cell or cell.is_black or not cell.user_input:
             return
         if cell.is_correct():
-            cell.correct = True
+            cell.corrected = True
         else:
             cell.incorrect = True
         self.crossword_widget.update()
@@ -474,8 +489,14 @@ class MainWindow(QMainWindow):
         cell = self.crossword_widget.get_current_cell()
         if not cell or cell.is_black:
             return
+        if cell.user_input == '':
+            self.crossword_widget.cells_filled += 1
+        self.crossword_widget.check_filled_puzzle()
         cell.reveal()
         self.crossword_widget.update()
+
+    
+            
 
     def reveal_current_word(self):
         """Reveal the word that contains the currently selected cell."""
@@ -490,7 +511,11 @@ class MainWindow(QMainWindow):
             cell = self.current_puzzle.cells[cell_row][cell_col]
             if cell.is_black:
                 continue
+            if cell.user_input == '':
+                self.crossword_widget.cells_filled += 1
             cell.reveal()
+            self.crossword_widget.check_filled_puzzle()
+        
         self.crossword_widget.update()
 
     def check_current_word(self):
@@ -509,7 +534,7 @@ class MainWindow(QMainWindow):
             if not cell.user_input:
                 continue
             if cell.is_correct():
-                cell.correct = True
+                cell.corrected = True
             else:
                 cell.incorrect = True
 

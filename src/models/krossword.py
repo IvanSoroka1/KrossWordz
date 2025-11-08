@@ -8,7 +8,7 @@ class KrossWordCell:
     user_input: str = ""
     is_black: bool = True
     clue_number: Optional[int] = None
-    correct: bool = False
+    corrected: bool = False
     incorrect: bool = False
     revealed: bool = False
     is_circled: bool = False
@@ -23,9 +23,9 @@ class KrossWordCell:
 
     def reveal(self) -> None:
         self.user_input = self.solution
-        if not self.correct:
+        if not self.corrected:
             self.revealed = True
-            self.correct = True
+            self.corrected = True
 
         
 
@@ -54,6 +54,7 @@ class KrossWordPuzzle:
     difficulty: str = ""
     category: str = ""
     solution_state: bool = False  # Whether to show solutions
+    fillable_cell_count: int = 0
 
     def initialize_grid(self, width: int, height: int):
         """Initialize empty grid"""

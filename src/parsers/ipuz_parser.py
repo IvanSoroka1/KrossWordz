@@ -64,8 +64,17 @@ class IPUZParser:
         clues_data = data.get('clues', {})
         self._parse_clues(puzzle, clues_data)
 
+        self.get_fillable_cell_count(puzzle)
+
         return puzzle
     
+    def get_fillable_cell_count(self, puzzle: KrossWordPuzzle):
+        puzzle.fillable_cell_count = 0
+        for row in puzzle.cells:
+            for cell in row:
+                if not cell.is_black:
+                    puzzle.fillable_cell_count += 1
+                    
     def _load_saved(self, puzzle:KrossWordPuzzle, saved: list):
         for row_idx in range(puzzle.height):
             if row_idx >= len(saved):

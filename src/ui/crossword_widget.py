@@ -15,6 +15,7 @@ class KrossWordWidget(QWidget):
     cell_selected = Signal(int, int)  # row, col
     pencil_mode_toggle_requested = Signal()
     value_changed = Signal()
+    display_message = Signal(bool)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -24,7 +25,8 @@ class KrossWordWidget(QWidget):
         self.highlight_mode = "across"  # "across" or "down"
         self.pencil_mode = False
         self.font_size = 16
-
+        self.cells_filled = 0
+        self.puzzle_solved = False
         self.cell_size = None
 
         self.setMouseTracking(True)
@@ -227,9 +229,6 @@ class KrossWordWidget(QWidget):
             self.puzzle.height * self.cell_size - 1,
         )
 
-        painter.setPen(QPen(Qt.darkBlue))
-        info_text = f"{self.puzzle.title} - {self.puzzle.width}x{self.puzzle.height}"
-        painter.drawText(10, self.puzzle.height * self.cell_size + 30, info_text)
 
     def _draw_cells(self, painter: QPainter) -> None:
         for row in range(self.puzzle.height):
@@ -324,7 +323,7 @@ class KrossWordWidget(QWidget):
 
 
             painter.save()
-            if cell.correct:
+            if cell.corrected:
                 painter.setPen(QPen(Qt.blue))
             elif cell.pencilled:
                 painter.setPen(QPen(Qt.gray))
@@ -383,8 +382,16 @@ class KrossWordWidget(QWidget):
 
     def _handle_letter_input(self, key: int, rebus: bool) -> None:
         cell = self.puzzle.cells[self.selected_row][self.selected_col]
-        if cell.is_black:
+        if cell.is_black or self.puzzle_solved:
             return
+        
+        if cell.corrected:
+            if self.highlight_mode == "down":
+                self._move_down()
+            else:
+                self._move_right()
+            return
+
 
         char = ""
         if Qt.Key_0 <= key <= Qt.Key_Z:
@@ -392,6 +399,10 @@ class KrossWordWidget(QWidget):
 
         if char:
             was_empty = cell.user_input == ""
+
+            if was_empty:
+                self.cells_filled +=1
+
             if self.pencil_mode:
                 cell.pencilled = True
             else:
@@ -427,8 +438,25 @@ class KrossWordWidget(QWidget):
                     else:
                         self._move_right()
                 # if the cell is not empty and it is the last cell then don't move
-            self.value_changed.emit()
-            self.update()
+
+        
+        self.check_filled_puzzle()
+
+        self.value_changed.emit()
+        self.update()
+    
+    def check_filled_puzzle(self):
+        if self.cells_filled == self.puzzle.fillable_cell_count:
+            for row in self.puzzle.cells:
+                for cell in row:
+                    if cell.is_black:
+                        continue
+                    if not cell.is_correct():
+                        self.display_message.emit(False)
+                        return
+            self.puzzle_solved = True
+            self.display_message.emit(True)
+
 
     def _loop_to_empty_in_entry(self, is_last_character: bool) -> None:
         if not self.puzzle:
@@ -505,9 +533,10 @@ class KrossWordWidget(QWidget):
             f"Delete handler: cell.is_black={cell.is_black}, user_input='{cell.user_input}'"
         )
         if not cell.is_black:
-            if cell.user_input and not cell.correct:
+            if cell.user_input and not cell.corrected:
                 print(f"Deleting current cell content: {cell.user_input}")
                 cell.user_input = ""
+                self.cells_filled -= 1
                 self.value_changed.emit()
                 self.update()
                 if cell.incorrect:
@@ -526,8 +555,9 @@ class KrossWordWidget(QWidget):
                     print(
                         f"Previous cell content: '{prev_cell.user_input}', is_black: {prev_cell.is_black}"
                     )
-                    if prev_cell and not prev_cell.is_black and not prev_cell.correct:
+                    if prev_cell and not prev_cell.is_black and not prev_cell.corrected:
                         prev_cell.user_input = ""
+                        self.cells_filled -= 1
                         self.value_changed.emit()
                         if prev_cell.incorrect:
                             prev_cell.incorrect = False
