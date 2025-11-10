@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Qt, Signal, QPoint, QPointF, QRectF
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget, QApplication
 
 from models.krossword import KrossWordCell, KrossWordPuzzle
 
@@ -99,7 +99,8 @@ class KrossWordWidget(QWidget):
         return cells
 
     def handle_global_navigation(self, key: int) -> None:
-        self._handle_navigation(key)
+        mods = QApplication.keyboardModifiers()
+        self._handle_navigation(key, (mods & Qt.ShiftModifier) == Qt.ShiftModifier)
 
     # ------------------------------------------------------------------
     # Qt event handlers
@@ -137,8 +138,9 @@ class KrossWordWidget(QWidget):
     def event(self, event):  # noqa: N802
         if event.type() == event.Type.KeyPress:
             if event.key() in (Qt.Key_Tab, Qt.Key_Backtab):
+                mods = QWidget.QApplication.keyboardModifiers()
                 print("DEBUG: Tab key caught in event() method")
-                self._handle_navigation(event.key())
+                self._handle_navigation(event.key(), mods & Qt.ShiftModifier)
                 return True
         return super().event(event)
 
@@ -148,7 +150,6 @@ class KrossWordWidget(QWidget):
 
         key = event.key()
         mods = event.modifiers()
-        print(f"DEBUG: KrossWordWidget keyPressEvent called with key: {key} ({Qt.Key_Tab})")
 
         if key == Qt.Key_Left:
             if self.highlight_mode == "down":
@@ -182,7 +183,7 @@ class KrossWordWidget(QWidget):
             self.pencil_mode_toggle_requested.emit()
             return
         elif Qt.Key_0 <= key <= Qt.Key_Z:
-            self._handle_letter_input(key, mods & Qt.ShiftModifier)
+            self._handle_letter_input(key, mods)
         elif key in (Qt.Key_Backspace, Qt.Key_Delete):
             print(
                 "Backspace/Delete pressed. Current cell: "
@@ -573,11 +574,11 @@ class KrossWordWidget(QWidget):
         self.cell_selected.emit(self.selected_row, self.selected_col)
         self.update()
 
-    def _handle_navigation(self, key: int) -> None:
+    def _handle_navigation(self, key: int, shift: bool) -> None:
         print(f"DEBUG: _handle_navigation called with key: {key}")
         if key in (Qt.Key_Tab, Qt.Key_Backtab):
             print("DEBUG: Tab key pressed - calling _move_to_next_entry_start")
-            self._move_to_next_entry_start()
+            self._move_to_next_entry_start(shift)
         elif key == Qt.Key_Right:
             print("DEBUG: Right key pressed - calling move_right")
             self.move_right()
@@ -585,7 +586,7 @@ class KrossWordWidget(QWidget):
             print("DEBUG: Return key pressed - calling move_down")
             self.move_down()
 
-    def _move_to_next_entry_start(self) -> None:
+    def _move_to_next_entry_start(self, shift: bool) -> None:
         if not self.puzzle:
             return
 
@@ -602,6 +603,12 @@ class KrossWordWidget(QWidget):
 
         clues = self.puzzle.across_clues if self.highlight_mode == "across" else self.puzzle.down_clues
 
+        end = len(clues)
+        step = 1
+        if shift:
+            end = -1
+            step = -1
+
         foundNonFilledWord = False
         current_index = -1
         if current_clue:
@@ -613,7 +620,7 @@ class KrossWordWidget(QWidget):
         original_index = current_index
         for i in range(2):
             if clues:
-                for j in range(current_index + 1, len(clues)):
+                for j in range((current_index + 1) if not shift else (current_index -1), end, step):
                     next_clue = clues[j]
                     if not self.word_filled(next_clue.start_col, next_clue.start_row):
                         foundNonFilledWord = True
@@ -623,16 +630,26 @@ class KrossWordWidget(QWidget):
                 else:         
                     clues = self.puzzle.across_clues if self.highlight_mode == "down" else self.puzzle.down_clues
                     self.highlight_mode = "across" if self.highlight_mode == "down" else "down"
-                    current_index = -1
+                    if not shift:
+                        current_index = -1
+                    else:
+                        current_index = len(clues)
         
         # if the grid is completely full, then just go to the next numerical clue 
+        clue_found = False
         if not foundNonFilledWord:
-            if original_index + 1 < len(clues):
-                next_clue = clues[original_index + 1]
+            if not shift:
+                if original_index + 1 < len(clues):
+                    next_clue = clues[original_index + 1]
+                    clue_found = True
             else:
+                if original_index - 1 >= 0:
+                    next_clue = clues[original_index - 1]
+                    clue_found = True
+            if not clue_found:
                 clues = self.puzzle.across_clues if self.highlight_mode == "down" else self.puzzle.down_clues
                 self.highlight_mode = "across" if self.highlight_mode == "down" else "down"
-                next_clue = clues[0]
+                next_clue = clues[0] if not shift else clues[-1]
 
         if next_clue:
             self.selected_row = next_clue.start_row
