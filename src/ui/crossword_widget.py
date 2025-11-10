@@ -458,7 +458,7 @@ class KrossWordWidget(QWidget):
             self.display_message.emit(True)
 
 
-    def _loop_to_empty_in_entry(self, is_last_character: bool) -> None:
+    def _loop_to_empty_in_entry(self, is_last_character: bool, next_cell: bool = True) -> None:
         if not self.puzzle:
             return
 
@@ -478,7 +478,7 @@ class KrossWordWidget(QWidget):
 
         if self.highlight_mode == "across":
             row = start[1]
-            search_start = self.selected_col + 1
+            search_start = self.selected_col + 1 if next_cell == True else self.selected_col
             if search_start > end[0]:
                 search_start = start[0]
 
@@ -490,7 +490,7 @@ class KrossWordWidget(QWidget):
                     self.update()
                     return
 
-            for col in range(start[0], self.selected_col + 1):
+            for col in range(start[0], self.selected_col + 1 if next_cell == True else self.selected_col):
                 if self.puzzle.cells[row][col].user_input == "":
                     self.selected_row, self.selected_col = (row, col)
                     print(f"DEBUG: Found first empty position: {(row, col)}")
@@ -499,7 +499,7 @@ class KrossWordWidget(QWidget):
                     return
         else:
             col = start[0]
-            search_start = self.selected_row + 1
+            search_start = self.selected_row + 1 if next_cell == True else self.selected_row
             if search_start > end[1]:
                 search_start = start[1]
 
@@ -511,7 +511,7 @@ class KrossWordWidget(QWidget):
                     self.update()
                     return
 
-            for row in range(start[1], self.selected_row + 1):
+            for row in range(start[1], self.selected_row + 1 if next_cell == True else self.selected_row):
                 if self.puzzle.cells[row][col].user_input == "":
                     self.selected_row, self.selected_col = (row, col)
                     print(f"DEBUG: Found first empty position: {(row, col)}")
@@ -520,12 +520,13 @@ class KrossWordWidget(QWidget):
                     return
 
         print("DEBUG: No empty squares found in entry, moving to next character")
-        if not is_last_character:
-            self.highlight_mode = original_mode
-            if self.highlight_mode == "down":
-                self._move_down()
-            else:
-                self._move_right()
+        if next_cell:
+            if not is_last_character:
+                self.highlight_mode = original_mode
+                if self.highlight_mode == "down":
+                    self._move_down()
+                else:
+                    self._move_right()
 
     def _handle_delete(self, key: int) -> None:
         cell = self.puzzle.cells[self.selected_row][self.selected_col]
@@ -599,69 +600,63 @@ class KrossWordWidget(QWidget):
             if start_cell.clue_number:
                 current_clue = self.puzzle.get_clue(start_cell.clue_number, self.highlight_mode)
 
-        if self.highlight_mode == "across":
-            across_clues = self.puzzle.across_clues
-            if across_clues:
-                current_index = -1
-                if current_clue:
-                    for i, clue in enumerate(across_clues):
-                        if clue.number == current_clue.number:
-                            current_index = i
-                            break
+        clues = self.puzzle.across_clues if self.highlight_mode == "across" else self.puzzle.down_clues
 
-                if current_index == len(across_clues) - 1:
-                    self.highlight_mode = "down"
-                    if self.puzzle.down_clues:
-                        next_clue = self.puzzle.down_clues[0]
-                        print(
-                            "Switching from across to down, moved to clue "
-                            f"#{next_clue.number}: {next_clue.text[:50]}..."
-                        )
-                    else:
-                        return
-                else:
-                    next_index = (current_index + 1) % len(across_clues)
-                    next_clue = across_clues[next_index]
-                    print(
-                        f"Moved to next across clue #{next_clue.number}: "
-                        f"{next_clue.text[:50]}..."
-                    )
-        else:
-            down_clues = self.puzzle.down_clues
-            if not down_clues:
-                return
+        foundNonFilledWord = False
+        current_index = -1
+        if current_clue:
+            for i, clue in enumerate(clues):
+                if clue.number == current_clue.number:
+                    current_index = i
+                    break
 
-            current_index = -1
-            if current_clue:
-                for i, clue in enumerate(down_clues):
-                    if clue.number == current_clue.number:
-                        current_index = i
+        original_index = current_index
+        for i in range(2):
+            if clues:
+                for j in range(current_index + 1, len(clues)):
+                    next_clue = clues[j]
+                    if not self.word_filled(next_clue.start_col, next_clue.start_row):
+                        foundNonFilledWord = True
                         break
-
-            if current_index == len(down_clues) - 1:
-                self.highlight_mode = "across"
-                if self.puzzle.across_clues:
-                    next_clue = self.puzzle.across_clues[0]
-                    print(
-                        "Switching from down to across, moved to clue "
-                        f"#{next_clue.number}: {next_clue.text[:50]}..."
-                    )
-                else:
-                    return
+                if foundNonFilledWord:  
+                    break
+                else:         
+                    clues = self.puzzle.across_clues if self.highlight_mode == "down" else self.puzzle.down_clues
+                    self.highlight_mode = "across" if self.highlight_mode == "down" else "down"
+                    current_index = -1
+        
+        # if the grid is completely full, then just go to the next numerical clue 
+        if not foundNonFilledWord:
+            if original_index + 1 < len(clues):
+                next_clue = clues[original_index + 1]
             else:
-                next_index = (current_index + 1) % len(down_clues)
-                next_clue = down_clues[next_index]
-                print(
-                    f"Moved to next down clue #{next_clue.number}: "
-                    f"{next_clue.text[:50]}..."
-                )
+                clues = self.puzzle.across_clues if self.highlight_mode == "down" else self.puzzle.down_clues
+                self.highlight_mode = "across" if self.highlight_mode == "down" else "down"
+                next_clue = clues[0]
 
         if next_clue:
             self.selected_row = next_clue.start_row
             self.selected_col = next_clue.start_col
+            self._loop_to_empty_in_entry(False, False)
 
         self.cell_selected.emit(self.selected_row, self.selected_col)
         self.update()
+    
+    def word_filled(self, word_start_col, word_start_row):
+        if self.highlight_mode == "across":
+            i = word_start_col
+            while i < self.puzzle.width and not self.puzzle.cells[word_start_row][i].is_black:
+                if self.puzzle.cells[word_start_row][i].user_input == "":
+                        return False
+                i += 1
+        else:
+            i = word_start_row
+            while i < self.puzzle.height and not self.puzzle.cells[i][word_start_col].is_black:
+                if self.puzzle.cells[i][word_start_col].user_input == "":
+                        return False
+                i += 1
+        return True
+
 
     def _handle_directional_move(self, delta_row: int, delta_col: int) -> None:
         new_row = self.selected_row + delta_row
