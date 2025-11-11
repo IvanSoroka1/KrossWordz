@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from ui.message_dialog import show_message
+from ui.ai_windows import ai_window
 
 from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap, QPalette
@@ -19,7 +20,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QSizePolicy,
+    QTabWidget,
 )
+from ui.preferences import preferences
 
 from services.file_loader import FileLoaderService
 from ui.clues_panel import CluesPanel
@@ -56,6 +59,7 @@ class MainWindow(QMainWindow):
         self.puzzle_timer.setInterval(1000)
         self.puzzle_timer.timeout.connect(self._update_timer_display)
         self.clues_panel = None
+        self.ai_page = None
         # Create and install global event filter for tab key handling
         self.tab_event_filter = TabEventFilter(self.crossword_widget)
         QApplication.instance().installEventFilter(self.tab_event_filter)
@@ -64,6 +68,14 @@ class MainWindow(QMainWindow):
     def create_menu_bar(self):
         """Create the application menu bar"""
         menubar = self.menuBar()
+        
+        some_menu = menubar.addMenu("Some Menu")
+        self.preferences_action = QAction("Preferences", self)
+        self.preferences_action.setMenuRole(QAction.PreferencesRole)
+        some_menu.addAction(self.preferences_action)
+        self.preferences_action.triggered.connect(self.show_preferences)
+
+        self.preferences_window = preferences()
 
         # Create File menu
         file_menu = menubar.addMenu("File")
@@ -120,14 +132,16 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("KrossWordz - Crossword Puzzle App")
         self.showMaximized() # Make window fullscreen
 
+        self.main_tabs = QTabWidget(self)
         # Create menu bar
         self.create_menu_bar()
 
         # Central widget with splitter
         central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        self.setCentralWidget(self.main_tabs)
+        puzzle_page = QWidget()
 
-        self.layout = QHBoxLayout(central_widget)
+        self.layout = QHBoxLayout(puzzle_page)
         self.layout.setSpacing(-1)
         self.layout.setContentsMargins(-1, -1, -1, -1)
 
@@ -213,11 +227,23 @@ class MainWindow(QMainWindow):
         left_layout.setStretchFactor(self.crossword_widget, 1)
 
         # Right panel: puzzle info, clues, and actions
-
         self.layout.addWidget(left_panel)
         self.layout.setStretch(0, 3)
 
-        
+        self.main_tabs.addTab(puzzle_page, "Puzzle")
+        self.main_tabs.setTabToolTip(0, "Crossword")
+
+        self.ai_page = ai_window()
+        self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
+
+        self.main_tabs.addTab(self.ai_page, "AI")
+        self.main_tabs.setTabToolTip(1, "AI")
+
+
+
+    def show_preferences(self):
+        self.preferences_window.show()        
+
 
     def display_message(self, correctness):
         self.pause_puzzle_timer()
@@ -365,8 +391,8 @@ class MainWindow(QMainWindow):
         self.crossword_widget.selected_col = clue.start_col
 
         opposite_direction = "across" if direction == "down" else "down"
-        start_row, start_col = self._find_word_start(self.crossword_widget.selected_row, self.crossword_widget.selected_col, opposite_direction)
-        opposite_direction_clue = self._find_clue_for_cell(start_row, start_col, opposite_direction)
+        start_row, start_col = self.crossword_widget.find_word_start(self.crossword_widget.selected_row, self.crossword_widget.selected_col, opposite_direction)
+        opposite_direction_clue = self.crossword_widget.find_clue_for_cell(start_row, start_col, opposite_direction)
 
         if opposite_direction_clue:
             self.clues_panel.highlight_clue_side(opposite_direction_clue.number, opposite_direction_clue.direction) 
@@ -573,10 +599,10 @@ class MainWindow(QMainWindow):
             self.clues_panel.clear_highlight()
             return
 
-        clue = self._find_clue_for_cell(row, col, direction)
+        clue = self.crossword_widget.find_clue_for_cell(row, col, direction)
         opposite_direction = "across" if direction == "down" else "down"
-        start_row, start_col = self._find_word_start(row, col, opposite_direction)
-        opposite_direction_clue = self._find_clue_for_cell(start_row, start_col, opposite_direction)
+        start_row, start_col = self.crossword_widget.find_word_start(row, col, opposite_direction)
+        opposite_direction_clue = self.crossword_widget.find_clue_for_cell(start_row, start_col, opposite_direction)
 
         if opposite_direction_clue:
             self.clues_panel.highlight_clue_side(opposite_direction_clue.number, opposite_direction_clue.direction)
@@ -620,7 +646,7 @@ class MainWindow(QMainWindow):
         print(f"Cell clue number: {cell.clue_number}")
 
         # Find the clue for this cell in the current direction
-        clue = self._find_clue_for_cell(row, col, direction)
+        clue = self.crossword_widget.find_clue_for_cell(row, col, direction)
 
         if clue:
             clue_text = f"{direction.upper()}: {clue.text}"
@@ -630,47 +656,3 @@ class MainWindow(QMainWindow):
             print("No clue found for this cell")
 
         self.current_clue_label.setText(clue_text)
-
-    def _find_clue_for_cell(self, row, col, direction):
-        """Find the clue for a cell even if it doesn't have a number"""
-        if not self.current_puzzle:
-            return None
-
-        # Always find the start of the word this cell belongs to
-        # This ensures we get the correct clue for the current direction
-        start_row, start_col = self._find_word_start(row, col, direction)
-
-        if start_row is not None and start_col is not None:
-            start_cell = self.current_puzzle.cells[start_row][start_col]
-            if start_cell.clue_number:
-                return self.current_puzzle.get_clue(start_cell.clue_number, direction)
-
-        # Fallback: try to get clue directly from cell number
-        if self.current_puzzle.cells[row][col].clue_number:
-            return self.current_puzzle.get_clue(
-                self.current_puzzle.cells[row][col].clue_number,
-                direction
-            )
-
-        return None
-
-    def _find_word_start(self, row, col, direction):
-        """Find the starting cell of a word in the given direction"""
-        if direction == "across":
-            # Find leftmost cell in the same row
-            start_col = col
-            # Move left until we hit a black cell or the beginning of the puzzle
-            while start_col > 0:
-                if self.current_puzzle.cells[row][start_col - 1].is_black:
-                    break
-                start_col -= 1
-            return row, start_col
-        else:  # down
-            # Find topmost cell in the same column
-            start_row = row
-            # Move up until we hit a black cell or the beginning of the puzzle
-            while start_row > 0:
-                if self.current_puzzle.cells[start_row - 1][col].is_black:
-                    break
-                start_row -= 1
-            return start_row, col

@@ -4,9 +4,10 @@ from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Qt, Signal, QPoint, QPointF, QRectF
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon
-from PySide6.QtWidgets import QWidget, QApplication
+from PySide6.QtWidgets import QWidget, QApplication, QMenu
 
 from models.krossword import KrossWordCell, KrossWordPuzzle
+from ui.ai_windows import ai_window
 
 
 class KrossWordWidget(QWidget):
@@ -16,6 +17,7 @@ class KrossWordWidget(QWidget):
     pencil_mode_toggle_requested = Signal()
     value_changed = Signal()
     display_message = Signal(bool)
+    request_clue_explanation = Signal(str, str)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -28,7 +30,8 @@ class KrossWordWidget(QWidget):
         self.cells_filled = 0
         self.puzzle_solved = False
         self.cell_size = None
-
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
         self.setMouseTracking(True)
         self.setMinimumSize(200, 200)
         print("DEBUG: KrossWordWidget initialized")
@@ -37,6 +40,62 @@ class KrossWordWidget(QWidget):
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def show_context_menu(self, pos: QPoint) -> None:
+        row = pos.y()//self.cell_size
+        col = pos.x()//self.cell_size
+
+        if row != self.selected_row or col != self.selected_col:
+            return
+            
+        clue = self.find_clue_for_cell(row, col, self.highlight_mode)
+
+        menu = QMenu(self)
+        explain_action = menu.addAction("Explain this clue and answer pair")
+        explain_action.triggered.connect(lambda : self.request_clue_explanation.emit(clue.text, clue.answer))
+        menu.exec(self.mapToGlobal(pos))
+
+
+    def find_clue_for_cell(self, row, col, direction):
+        """Find the clue for a cell even if it doesn't have a number"""
+        # Always find the start of the word this cell belongs to
+        # This ensures we get the correct clue for the current direction
+        start_row, start_col = self.find_word_start(row, col, direction)
+
+        if start_row is not None and start_col is not None:
+            start_cell = self.puzzle.cells[start_row][start_col]
+            if start_cell.clue_number:
+                return self.puzzle.get_clue(start_cell.clue_number, direction)
+
+        # Fallback: try to get clue directly from cell number
+        if self.cells[row][col].clue_number:
+            return self.puzzle.get_clue(
+                self.cells[row][col].clue_number,
+                direction
+            )
+
+        return None
+
+    def find_word_start(self, row, col, direction):
+        """Find the starting cell of a word in the given direction"""
+        if direction == "across":
+            # Find leftmost cell in the same row
+            start_col = col
+            # Move left until we hit a black cell or the beginning of the puzzle
+            while start_col > 0:
+                if self.puzzle.cells[row][start_col - 1].is_black:
+                    break
+                start_col -= 1
+            return row, start_col
+        else:  # down
+            # Find topmost cell in the same column
+            start_row = row
+            # Move up until we hit a black cell or the beginning of the puzzle
+            while start_row > 0:
+                if self.puzzle.cells[start_row - 1][col].is_black:
+                    break
+                start_row -= 1
+            return start_row, col
 
     def set_puzzle(self, puzzle: KrossWordPuzzle) -> None:
         self.puzzle = puzzle
