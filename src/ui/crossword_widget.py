@@ -55,7 +55,8 @@ class KrossWordWidget(QWidget):
         explain_action.triggered.connect(lambda : self.request_clue_explanation.emit(clue.text, clue.answer))
         menu.exec(self.mapToGlobal(pos))
 
-
+    def focusNextPrevChild(self, next: bool) -> bool:
+        return False  # stop Qt from moving focus on Tab/Shift+Tab
     def find_clue_for_cell(self, row, col, direction):
         """Find the clue for a cell even if it doesn't have a number"""
         # Always find the start of the word this cell belongs to
@@ -197,7 +198,7 @@ class KrossWordWidget(QWidget):
     def event(self, event):  # noqa: N802
         if event.type() == event.Type.KeyPress:
             if event.key() in (Qt.Key_Tab, Qt.Key_Backtab):
-                mods = QWidget.QApplication.keyboardModifiers()
+                mods = QApplication.keyboardModifiers()
                 print("DEBUG: Tab key caught in event() method")
                 self._handle_navigation(event.key(), mods & Qt.ShiftModifier)
                 return True
@@ -691,6 +692,7 @@ class KrossWordWidget(QWidget):
                     self.highlight_mode = "across" if self.highlight_mode == "down" else "down"
                     if not shift:
                         current_index = -1
+                        end = len(clues)
                     else:
                         current_index = len(clues)
         

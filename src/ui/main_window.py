@@ -27,7 +27,6 @@ from ui.preferences import preferences
 from services.file_loader import FileLoaderService
 from ui.clues_panel import CluesPanel
 from ui.crossword_widget import KrossWordWidget
-from ui.tab_event_filter import TabEventFilter
 
 class MainWindow(QMainWindow):
     """Main application window"""
@@ -60,10 +59,6 @@ class MainWindow(QMainWindow):
         self.puzzle_timer.timeout.connect(self._update_timer_display)
         self.clues_panel = None
         self.ai_page = None
-        # Create and install global event filter for tab key handling
-        self.tab_event_filter = TabEventFilter(self.crossword_widget)
-        QApplication.instance().installEventFilter(self.tab_event_filter)
-        print("DEBUG: Global tab event filter installed")
 
     def create_menu_bar(self):
         """Create the application menu bar"""
