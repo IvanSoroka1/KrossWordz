@@ -177,7 +177,7 @@ class KrossWordWidget(QWidget):
         self._draw_grid(painter)
 
     def mousePressEvent(self, event):  # noqa: N802
-        if not self.puzzle:
+        if not self.puzzle or event.button() == Qt.MouseButton.RightButton:
             return
 
         col = int(round(event.position().x() // self.cell_size))
