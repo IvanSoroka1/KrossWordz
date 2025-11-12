@@ -33,8 +33,6 @@ class ai_window(QWidget):
 
         self.setLayout(outer_layout)
 
-        self.show()
-
     def explain_clue(self, clue, answer):
         if self.gemini_model == None:
             self.layout.addWidget(self._create_label("No API key found. Please set one in preferences"))

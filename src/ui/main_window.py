@@ -193,8 +193,8 @@ class MainWindow(QMainWindow):
         self.pencil_button.setIcon(pencil_icon)
         self.pencil_button.setFixedSize(36, 36)
         self.pencil_button.setToolTip("Enable/disable pencil mode")
-        self.pencil_button.setEnabled(True)
-        self.pencil_button.setVisible(True)
+        self.pencil_button.setEnabled(False)
+        self.pencil_button.setVisible(False)
         self.pencil_button.clicked.connect(self.set_pencil_mode)
         self._style_icon_button(self.pencil_button)
         timer_row.addWidget(self.pencil_button)
@@ -330,6 +330,9 @@ class MainWindow(QMainWindow):
 
             right_layout.addStretch()
             self.layout.addWidget(right_panel)
+            
+            self.pencil_button.setVisible(True)
+            self.pencil_button.setEnabled(True)
 
             self.layout.setStretch(1, 2)
             self.update_title_label()
