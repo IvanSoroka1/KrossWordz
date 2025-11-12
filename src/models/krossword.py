@@ -55,6 +55,7 @@ class KrossWordPuzzle:
     category: str = ""
     solution_state: bool = False  # Whether to show solutions
     fillable_cell_count: int = 0
+    initial_filled_cells: int = 0
 
     def initialize_grid(self, width: int, height: int):
         """Initialize empty grid"""

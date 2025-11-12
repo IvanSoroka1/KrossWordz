@@ -199,6 +199,11 @@ class MainWindow(QMainWindow):
         self._style_icon_button(self.pencil_button)
         timer_row.addWidget(self.pencil_button)
 
+        self.cells_filled = QLabel()
+        self.cells_filled.setToolTip("Ratio of cells filled")
+        self.cells_filled.setVisible(False)
+        timer_row.addWidget(self.cells_filled)
+
         timer_row.addStretch()
         left_layout.addLayout(timer_row)
 
@@ -215,6 +220,7 @@ class MainWindow(QMainWindow):
         self.crossword_widget.cell_selected.connect(self.on_cell_selected)
         self.crossword_widget.value_changed.connect(self.raise_updated_signal)
         self.crossword_widget.display_message.connect(self.display_message)
+        self.crossword_widget.cell_count_changed.connect(self.on_cell_count_changed)
 
         self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
         self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
@@ -235,6 +241,8 @@ class MainWindow(QMainWindow):
         self.main_tabs.setTabToolTip(1, "AI")
 
 
+    def on_cell_count_changed(self, count):
+        self.cells_filled.setText(f"{count}/{self.current_puzzle.fillable_cell_count}")
 
     def show_preferences(self):
         self.preferences_window.show()        
@@ -334,10 +342,18 @@ class MainWindow(QMainWindow):
             self.pencil_button.setVisible(True)
             self.pencil_button.setEnabled(True)
 
+            self.crossword_widget.cells_filled = self.current_puzzle.initial_filled_cells
+
+            self.cells_filled.setText(f"{self.crossword_widget.cells_filled}/{self.current_puzzle.fillable_cell_count}")
+
+            self.cells_filled.setVisible(True)
+
             self.layout.setStretch(1, 2)
             self.update_title_label()
             self.start_puzzle_timer()
             return True
+
+
         except Exception as e:
             if show_error_dialog:
                 QMessageBox.warning(self, "Error", f"Failed to load puzzle:\n{e}")
@@ -409,6 +425,7 @@ class MainWindow(QMainWindow):
                 if not cell.is_black and cell.solution:
                     cell.reveal()
         self.crossword_widge.filled_cells = self.crossword_widget.puzzle.fillable_cell_count
+        self.on_cell_count_changed(self.crossword_widget.filled_cells)
         self.display_message(True)
         self.crossword_widget.update()
 
@@ -515,6 +532,7 @@ class MainWindow(QMainWindow):
             return
         if cell.user_input == '':
             self.crossword_widget.cells_filled += 1
+            self.on_cell_count_changed(self.crossword_widget.cells_filled)
         self.crossword_widget.check_filled_puzzle()
         cell.reveal()
         self.crossword_widget.update()
@@ -537,6 +555,8 @@ class MainWindow(QMainWindow):
                 continue
             if cell.user_input == '':
                 self.crossword_widget.cells_filled += 1
+                self.on_cell_count_changed(self.crossword_widget.cells_filled)
+                
             cell.reveal()
             self.crossword_widget.check_filled_puzzle()
         

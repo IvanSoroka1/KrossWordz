@@ -18,6 +18,7 @@ class KrossWordWidget(QWidget):
     value_changed = Signal()
     display_message = Signal(bool)
     request_clue_explanation = Signal(str, str)
+    cell_count_changed = Signal(int)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -463,6 +464,7 @@ class KrossWordWidget(QWidget):
 
             if was_empty:
                 self.cells_filled +=1
+                self.cell_count_changed.emit(self.cells_filled)
 
             if self.pencil_mode:
                 cell.pencilled = True
@@ -504,6 +506,7 @@ class KrossWordWidget(QWidget):
         self.check_filled_puzzle()
 
         self.value_changed.emit()
+
         self.update()
     
     def check_filled_puzzle(self):
@@ -599,6 +602,7 @@ class KrossWordWidget(QWidget):
                 print(f"Deleting current cell content: {cell.user_input}")
                 cell.user_input = ""
                 self.cells_filled -= 1
+                self.cell_count_changed.emit(self.cells_filled)
                 self.value_changed.emit()
                 self.update()
                 if cell.incorrect:
@@ -620,6 +624,7 @@ class KrossWordWidget(QWidget):
                     if prev_cell and not prev_cell.is_black and not prev_cell.corrected:
                         prev_cell.user_input = ""
                         self.cells_filled -= 1
+                        self.cell_count_changed.emit(self.cells_filled)
                         self.value_changed.emit()
                         if prev_cell.incorrect:
                             prev_cell.incorrect = False

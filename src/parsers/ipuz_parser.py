@@ -74,6 +74,8 @@ class IPUZParser:
             for cell in row:
                 if not cell.is_black:
                     puzzle.fillable_cell_count += 1
+                    if cell.user_input != '':
+                        puzzle.initial_filled_cells += 1
                     
     def _load_saved(self, puzzle:KrossWordPuzzle, saved: list):
         for row_idx in range(puzzle.height):
