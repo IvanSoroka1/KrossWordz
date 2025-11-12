@@ -100,6 +100,9 @@ class KrossWordWidget(QWidget):
             return start_row, col
 
     def set_puzzle(self, puzzle: KrossWordPuzzle) -> None:
+        self.highlight_mode = "across"
+        self.selected_row = 0
+        self.selected_col = 0
         self.puzzle = puzzle
         self._recompute_cell_metrics()
         self.update()

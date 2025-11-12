@@ -142,6 +142,7 @@ class MainWindow(QMainWindow):
         self.layout.setSpacing(-1)
         self.layout.setContentsMargins(-1, -1, -1, -1)
 
+        self.right_panel = None
         # Left panel: Crossword and current clue
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
@@ -317,11 +318,16 @@ class MainWindow(QMainWindow):
             self.current_puzzle_path = normalized_path
             self.crossword_widget.set_puzzle(self.current_puzzle)
 
-            right_panel = QWidget()
+            if self.right_panel is not None:
+                self.layout.removeWidget(self.right_panel)
+                self.right_panel.setParent(None)
+                self.right_panel.deleteLater()
+
+            self.right_panel = QWidget()
             right_layout = QVBoxLayout()
             right_layout.setSpacing(-1)
             right_layout.setContentsMargins(-1, -1, -1, -1)
-            right_panel.setLayout(right_layout)
+            self.right_panel.setLayout(right_layout)
 
             self.title_label = QLabel("No puzzle loaded")
             self.title_label.setFont(QFont("Arial", 16, QFont.Bold))
@@ -341,15 +347,14 @@ class MainWindow(QMainWindow):
             right_layout.setStretchFactor(self.clues_panel, 1)
 
             right_layout.addStretch()
-            self.layout.addWidget(right_panel)
-            
+            self.layout.addWidget(self.right_panel)
+           
             self.pencil_button.setVisible(True)
             self.pencil_button.setEnabled(True)
 
             self.crossword_widget.cells_filled = self.current_puzzle.initial_filled_cells
 
             self.cells_filled.setText(f"{self.crossword_widget.cells_filled}/{self.current_puzzle.fillable_cell_count}")
-
             self.cells_filled.setVisible(True)
 
             self.layout.setStretch(1, 2)
