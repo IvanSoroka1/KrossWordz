@@ -355,6 +355,10 @@ class MainWindow(QMainWindow):
             self.layout.setStretch(1, 2)
             self.update_title_label()
             self.start_puzzle_timer()
+
+            self._update_current_clue_display(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
+            self._update_clues_highlight(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
+
             return True
 
 
