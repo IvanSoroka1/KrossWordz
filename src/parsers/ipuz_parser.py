@@ -85,7 +85,6 @@ class IPUZParser:
                 puzzle.cells[row_idx][col_idx].user_input = saved[row_idx][col_idx]
 
     def _parse_grid(self, puzzle: KrossWordPuzzle, grid_data: list, data: dict):
-        """Parse v2 format with separate puzzle and solution grids"""
         solution_grid = data.get('solution', [])
         for row_idx in range(puzzle.height):
             if row_idx >= len(grid_data) or row_idx >= len(solution_grid):
@@ -123,7 +122,7 @@ class IPUZParser:
                         cell.solution = ""
 
                 # Override solution from solution grid if available
-                if isinstance(solution_char, str) and len(solution_char) == 1:
+                if isinstance(solution_char, str):
                     cell.solution = solution_char.upper()
         
 
