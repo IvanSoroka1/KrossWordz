@@ -251,11 +251,12 @@ class MainWindow(QMainWindow):
         self.preferences_window.show()        
 
 
-    def display_message(self, correctness):
-        self.pause_puzzle_timer()
-        self.resume_button.setVisible(False)
-        self.pause_button.setVisible(False)
-        show_message(self, correctness)
+    def display_message(self, correct: bool):
+        if correct:
+            self.pause_puzzle_timer()
+            self.resume_button.setVisible(False)
+            self.pause_button.setVisible(False)
+        show_message(self, correct)
 
     def _style_icon_button(self, button: QPushButton) -> None:
         """Apply a transparent style for icon-only buttons."""
