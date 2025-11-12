@@ -5,7 +5,7 @@ from pathlib import Path
 from ui.message_dialog import show_message
 from ui.ai_windows import ai_window
 
-from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtCore import Qt, QTimer, QSize, QSettings
 from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap, QPalette
 from PySide6.QtWidgets import (
     QDialog,
@@ -71,6 +71,8 @@ class MainWindow(QMainWindow):
         self.preferences_action.triggered.connect(self.show_preferences)
 
         self.preferences_window = preferences()
+        self.settings = QSettings("KrossWordz", "KrossWordz")
+
 
         # Create File menu
         file_menu = menubar.addMenu("File")
@@ -292,11 +294,13 @@ class MainWindow(QMainWindow):
 
     def load_puzzle(self):
         """Load a puzzle using a file dialog"""
+        last_puzzle_dir = self.settings.value("last_puzzle_dir", "")
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Load .ipuz Puzzle", "", "IPUZ Files (*.ipuz);;All Files (*)"
+            self, caption="Load .ipuz Puzzle", filter="IPUZ Files (*.ipuz);;All Files (*)", dir=last_puzzle_dir
         )
 
         if file_path:
+            self.settings.setValue("last_puzzle_dir", os.path.dirname(file_path))
             self.load_puzzle_from_path(file_path)
 
 
