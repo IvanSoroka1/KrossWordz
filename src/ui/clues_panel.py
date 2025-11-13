@@ -31,6 +31,9 @@ class CluesTextEdit(QTextEdit):
         self._default_stylesheet = self.styleSheet()
         self.number = number
         self.direction = direction
+        self.styelsheet = dict()
+        self.styelsheet["highlight"] = ""
+        self.styelsheet["grey"] = ""
 
     def setText(self, text):
         super().setText(text)
@@ -58,10 +61,16 @@ class CluesTextEdit(QTextEdit):
 
     def set_highlighted(self, highlighted: bool) -> None:
         """Toggle highlight coloring on the text edit background."""
-        if highlighted:
-            self.setStyleSheet("background-color: #47c8ff;")
-        else:
-            self.setStyleSheet(self._default_stylesheet)
+        self.styelsheet["highlight"] = "background-color: #47c8ff;" if highlighted else ""
+        self.applyStyleSheet()
+        
+    def set_grey_text(self, make_grey: bool) -> None:
+        self.styelsheet["grey"] = "color: grey;" if make_grey else ""
+        self.applyStyleSheet()
+
+    def applyStyleSheet(self):
+        self.setStyleSheet(self.styelsheet["highlight"] + self.styelsheet["grey"])
+
 
     def _apply_center_alignment(self) -> None:
         cursor = self.textCursor()
@@ -93,10 +102,10 @@ class CluesPanel(QWidget):
 
     def __init__(self, across_clues: list[str], down_clues: list[str], parent=None):
         super().__init__(parent)
-        layout = QHBoxLayout()
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(10)
-        self.setLayout(layout)
+        self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(5, 5, 5, 5)
+        self.layout.setSpacing(10)
+        self.setLayout(self.layout)
         self.clues = dict()
         self.clueSides = dict()
         self._scroll_areas = dict()
@@ -104,8 +113,9 @@ class CluesPanel(QWidget):
         self._side_highlighted_key = None
         self.highlight_color = "#47c8ff"
         self.default_color = "#868686"
-        self.across_text_edit = self._create_section(layout, "ACROSS", across_clues)
-        self.down_text_edit = self._create_section(layout, "DOWN", down_clues)
+        self.scroll_layout = None
+        self.across_text_edit = self._create_section(self.layout, "ACROSS", across_clues)
+        self.down_text_edit = self._create_section(self.layout, "DOWN", down_clues)
 
 
     def _create_section(self, parent_layout: QHBoxLayout, title: str, clues: list[str] ) -> CluesTextEdit:
@@ -128,10 +138,10 @@ class CluesPanel(QWidget):
         self._scroll_areas[title.lower()] = scroll_area
 
         scroll_content = QWidget(scroll_area)
-        scroll_layout = QVBoxLayout()
-        scroll_layout.setContentsMargins(0, 0, 0, 0)
-        scroll_layout.setSpacing(4)
-        scroll_content.setLayout(scroll_layout)
+        self.scroll_layout = QVBoxLayout()
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_layout.setSpacing(4)
+        scroll_content.setLayout(self.scroll_layout)
         scroll_area.setWidget(scroll_content)
 
         last_text_edit = None
@@ -149,17 +159,21 @@ class CluesPanel(QWidget):
 
             clue_layout.addWidget(sideBox)  
             clue_layout.addWidget(text_edit)
-            scroll_layout.addLayout(clue_layout)
+            self.scroll_layout.addLayout(clue_layout)
             last_text_edit = text_edit
 
-        scroll_layout.addStretch()
+        self.scroll_layout.addStretch()
 
         # text_edit = CluesTextEdit(container)
         # section_layout.addWidget(text_edit)
-
-
         parent_layout.addWidget(container)
         return last_text_edit
+
+    def greyout_text(self, number: int, direction: str, make_grey: bool) -> None:
+        key=(number, direction)
+        text_edit = self.clues.get(key)
+        if text_edit:
+            text_edit.set_grey_text(make_grey)
 
     def highlight_clue(self, number: int, direction: str) -> None:
         """Highlight the requested clue and reset the previous one."""

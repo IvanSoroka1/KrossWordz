@@ -19,6 +19,7 @@ class KrossWordWidget(QWidget):
     display_message = Signal(bool)
     request_clue_explanation = Signal(str, str)
     cell_count_changed = Signal(int)
+    greyout_clue = Signal(int, str, bool)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -482,6 +483,9 @@ class KrossWordWidget(QWidget):
                 cell.user_input += char
             else:
                 cell.user_input = char
+                if was_empty:
+                    self.check_filled_word()
+
                 start, end = self._get_word_bounds(
                     self.selected_row, self.selected_col, self.highlight_mode
                 )
@@ -504,13 +508,27 @@ class KrossWordWidget(QWidget):
                     else:
                         self._move_right()
                 # if the cell is not empty and it is the last cell then don't move
-
         
         self.check_filled_puzzle()
 
         self.value_changed.emit()
 
         self.update()
+
+    def check_filled_word(self):
+        for direction in ("across", "down"):
+            (start, end) = self._get_word_bounds(self.selected_row, self.selected_col, direction)
+            if self.word_filled(start[0], start[1], direction):
+                start_cell = self.puzzle.cells[start[1]][start[0]]
+                self.greyout_clue.emit(start_cell.clue_number, direction, True)
+    
+    def ungrey_text(self):
+        for direction in ("across", "down"):
+            (start, end) = self._get_word_bounds(self.selected_row, self.selected_col, direction)
+            start_cell = self.puzzle.cells[start[1]][start[0]]
+            self.greyout_clue.emit(start_cell.clue_number, direction, False)
+
+            
     
     def check_filled_puzzle(self):
         if self.cells_filled == self.puzzle.fillable_cell_count:
@@ -597,44 +615,31 @@ class KrossWordWidget(QWidget):
 
     def _handle_delete(self, key: int) -> None:
         cell = self.puzzle.cells[self.selected_row][self.selected_col]
-        print(
-            f"Delete handler: cell.is_black={cell.is_black}, user_input='{cell.user_input}'"
-        )
         if not cell.is_black:
+            # if the current cell is filled and is not corrected, then delete it and don't move back
             if cell.user_input and not cell.corrected:
-                print(f"Deleting current cell content: {cell.user_input}")
                 cell.user_input = ""
                 self.cells_filled -= 1
+                self.ungrey_text()
                 self.cell_count_changed.emit(self.cells_filled)
-                self.value_changed.emit()
                 self.update()
                 if cell.incorrect:
                     cell.incorrect = False
             else:
-                print("Cell is empty, moving to previous cell")
                 original_row, original_col = self.selected_row, self.selected_col
                 self._move_to_previous_cell()
-                print(
-                    "Moved to previous cell: "
-                    f"({self.selected_row}, {self.selected_col}), original was "
-                    f"({original_row}, {original_col})"
-                )
                 if (self.selected_row, self.selected_col) != (original_row, original_col):
                     prev_cell = self.puzzle.cells[self.selected_row][self.selected_col]
-                    print(
-                        f"Previous cell content: '{prev_cell.user_input}', is_black: {prev_cell.is_black}"
-                    )
                     if prev_cell and not prev_cell.is_black and not prev_cell.corrected:
-                        prev_cell.user_input = ""
-                        self.cells_filled -= 1
-                        self.cell_count_changed.emit(self.cells_filled)
-                        self.value_changed.emit()
+                        if prev_cell.user_input:
+                            prev_cell.user_input = ""
+                            self.cells_filled -= 1
+                            self.ungrey_text()
+                            self.cell_count_changed.emit(self.cells_filled)
                         if prev_cell.incorrect:
                             prev_cell.incorrect = False
                     self.cell_selected.emit(self.selected_row, self.selected_col)
 
-                else:
-                    print("Could not find a valid previous cell")
                 self.update()
 
     def _toggle_highlight_mode(self) -> None:
@@ -728,8 +733,10 @@ class KrossWordWidget(QWidget):
         self.cell_selected.emit(self.selected_row, self.selected_col)
         self.update()
     
-    def word_filled(self, word_start_col, word_start_row):
-        if self.highlight_mode == "across":
+    def word_filled(self, word_start_col, word_start_row, direction = None):
+        if not direction:
+            direction = self.highlight_mode
+        if direction == "across":
             i = word_start_col
             while i < self.puzzle.width and not self.puzzle.cells[word_start_row][i].is_black:
                 if self.puzzle.cells[word_start_row][i].user_input == "":

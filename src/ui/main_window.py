@@ -365,6 +365,8 @@ class MainWindow(QMainWindow):
             self._update_current_clue_display(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
             self._update_clues_highlight(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
 
+            self.crossword_widget.greyout_clue.connect(self.clues_panel.greyout_text)
+
             return True
 
 
