@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ui.message_dialog import show_message
 from ui.ai_windows import ai_window
+from ui.check_and_reveal import Check_and_Reveal
 
 from PySide6.QtCore import Qt, QTimer, QSize, QSettings
 from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap, QPalette
@@ -93,35 +94,35 @@ class MainWindow(QMainWindow):
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
-
+        
         # Create Check menu
-        check_menu = menubar.addMenu("Check")
+        self.check_menu = menubar.addMenu("Check")
 
-        check_letter_action = QAction("Check Letter", self)
-        check_letter_action.triggered.connect(self.check_current_letter)
-        check_menu.addAction(check_letter_action)
+        self.check_letter_action = QAction("Check Letter", self)
+        self.check_letter_action.setEnabled(False)
+        self.check_menu.addAction(self.check_letter_action)
 
-        check_word_action = QAction("Check Word", self)
-        check_word_action.triggered.connect(self.check_current_word)
-        check_menu.addAction(check_word_action)
+        self.check_word_action = QAction("Check Word", self)
+        self.check_word_action.setEnabled(False)
+        self.check_menu.addAction(self.check_word_action)
 
-        check_puzzle_action = QAction("Check Puzzle", self)
-        check_puzzle_action.triggered.connect(self.check_answers)
-        check_menu.addAction(check_puzzle_action)
+        self.check_puzzle_action = QAction("Check Grid", self)
+        self.check_puzzle_action.setEnabled(False)
+        self.check_menu.addAction(self.check_puzzle_action)
 
-        reveal_menu = menubar.addMenu("Reveal")
+        self.reveal_menu = menubar.addMenu("Reveal")
 
-        reveal_letter_action = QAction("Reveal Letter", self)
-        reveal_letter_action.triggered.connect(self.reveal_current_letter)
-        reveal_menu.addAction(reveal_letter_action)
+        self.reveal_letter_action = QAction("Reveal Letter", self)
+        self.reveal_letter_action.setEnabled(False)
+        self.reveal_menu.addAction(self.reveal_letter_action)
 
-        reveal_word_action = QAction("Reveal Word", self)
-        reveal_word_action.triggered.connect(self.reveal_current_word)
-        reveal_menu.addAction(reveal_word_action)
+        self.reveal_word_action = QAction("Reveal Word", self)
+        self.reveal_word_action.setEnabled(False)
+        self.reveal_menu.addAction(self.reveal_word_action)
 
-        reveal_puzzle_action = QAction("Reveal Puzzle", self)
-        reveal_puzzle_action.triggered.connect(self.reveal_answers)
-        reveal_menu.addAction(reveal_puzzle_action)
+        self.reveal_puzzle_action = QAction("Reveal Grid", self)
+        self.reveal_puzzle_action.setEnabled(False)
+        self.reveal_menu.addAction(self.reveal_puzzle_action)
 
 
     def init_ui(self):
@@ -240,6 +241,8 @@ class MainWindow(QMainWindow):
         self.ai_page = ai_window()
         self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
 
+        self.check_and_reveal = None
+
         self.main_tabs.addTab(self.ai_page, "AI")
         self.main_tabs.setTabToolTip(1, "AI")
 
@@ -319,6 +322,26 @@ class MainWindow(QMainWindow):
             self.current_puzzle_path = normalized_path
             self.crossword_widget.set_puzzle(self.current_puzzle)
 
+            self.check_and_reveal = Check_and_Reveal(self.crossword_widget, self.current_puzzle)
+            
+            self.check_letter_action.triggered.connect(self.check_and_reveal.check_current_letter) 
+            self.check_letter_action.setEnabled(True)
+
+            self.check_word_action.triggered.connect(self.check_and_reveal.check_current_word)
+            self.check_word_action.setEnabled(True)
+
+            self.check_puzzle_action.triggered.connect(self.check_and_reveal.check_answers)
+            self.check_puzzle_action.setEnabled(True)
+
+            self.reveal_letter_action.triggered.connect(self.check_and_reveal.reveal_current_letter)
+            self.reveal_letter_action.setEnabled(True)
+
+            self.reveal_word_action.triggered.connect(self.check_and_reveal.reveal_current_word)
+            self.reveal_word_action.setEnabled(True)
+
+            self.reveal_puzzle_action.triggered.connect(self.check_and_reveal.reveal_answers)
+            self.reveal_puzzle_action.setEnabled(True)
+
             if self.right_panel is not None:
                 self.layout.removeWidget(self.right_panel)
                 self.right_panel.setParent(None)
@@ -346,6 +369,8 @@ class MainWindow(QMainWindow):
             self.clues_panel.clue_selected.connect(self.on_clue_selected)
             right_layout.addWidget(self.clues_panel)
             right_layout.setStretchFactor(self.clues_panel, 1)
+
+            self.check_and_reveal.grey_all_clues.connect(self.clues_panel.grey_all_clues)
 
             right_layout.addStretch()
             self.layout.addWidget(self.right_panel)
@@ -431,19 +456,6 @@ class MainWindow(QMainWindow):
         self._update_current_clue_display(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
         self.crossword_widget.update()
 
-    def reveal_answers(self):
-        """Reveal current answers"""
-        if not self.current_puzzle:
-            QMessageBox.warning(self, "Warning", "No puzzle loaded to reveal")
-            return
-        for row in self.current_puzzle.cells:
-            for cell in row:
-                if not cell.is_black and cell.solution:
-                    cell.reveal()
-        self.crossword_widge.filled_cells = self.crossword_widget.puzzle.fillable_cell_count
-        self.on_cell_count_changed(self.crossword_widget.filled_cells)
-        self.display_message(True)
-        self.crossword_widget.update()
 
     def set_pencil_mode(self):
         """Toggle pencil mode and update button styling."""
@@ -508,97 +520,6 @@ class MainWindow(QMainWindow):
         self.resume_button.setEnabled(False)
         self.resume_button.setVisible(False)
 
-    def check_answers(self):
-        """Check current answers"""
-        if not self.current_puzzle:
-            QMessageBox.warning(self, "Warning", "No puzzle loaded to check")
-            return
-        for row in self.current_puzzle.cells:
-            for cell in row:
-                if not cell or cell.is_black or not cell.user_input:
-                    continue
-                if cell.is_correct():
-                    cell.corrected = True
-                else:
-                    cell.incorrect = True
-
-        self.crossword_widget.update()
-
-    def check_current_letter(self):
-        """Verify the currently selected letter."""
-        if not self.current_puzzle:
-            QMessageBox.warning(self, "Warning", "Load a puzzle before checking letters")
-            return
-        cell = self.crossword_widget.get_current_cell()
-        if not cell or cell.is_black or not cell.user_input:
-            return
-        if cell.is_correct():
-            cell.corrected = True
-        else:
-            cell.incorrect = True
-        self.crossword_widget.update()
-
-    def reveal_current_letter(self):
-        """Reveal the currently selected letter."""
-        if not self.current_puzzle:
-            QMessageBox.warning(self, "Warning", "Load a puzzle before revealing letters")
-            return
-        cell = self.crossword_widget.get_current_cell()
-        if not cell or cell.is_black:
-            return
-        if cell.user_input == '':
-            self.crossword_widget.cells_filled += 1
-            self.on_cell_count_changed(self.crossword_widget.cells_filled)
-        self.crossword_widget.check_filled_puzzle()
-        cell.reveal()
-        self.crossword_widget.update()
-
-    
-            
-
-    def reveal_current_word(self):
-        """Reveal the word that contains the currently selected cell."""
-        if not self.current_puzzle:
-            QMessageBox.warning(self, "Warning", "Load a puzzle before revealing words")
-            return
-        position = self.crossword_widget.get_current_position()
-        if not position:
-            return
-        word_cells = self.crossword_widget.get_current_word_coordinates()
-        for cell_row, cell_col in word_cells:
-            cell = self.current_puzzle.cells[cell_row][cell_col]
-            if cell.is_black:
-                continue
-            if cell.user_input == '':
-                self.crossword_widget.cells_filled += 1
-                self.on_cell_count_changed(self.crossword_widget.cells_filled)
-                
-            cell.reveal()
-            self.crossword_widget.check_filled_puzzle()
-        
-        self.crossword_widget.update()
-
-    def check_current_word(self):
-        """Verify the word that contains the currently selected cell."""
-        if not self.current_puzzle:
-            QMessageBox.warning(self, "Warning", "Load a puzzle before checking words")
-            return
-        position = self.crossword_widget.get_current_position()
-        if not position:
-            return
-        word_cells = self.crossword_widget.get_current_word_coordinates()
-        for cell_row, cell_col in word_cells:
-            cell = self.current_puzzle.cells[cell_row][cell_col]
-            if cell.is_black:
-                continue
-            if not cell.user_input:
-                continue
-            if cell.is_correct():
-                cell.corrected = True
-            else:
-                cell.incorrect = True
-
-        self.crossword_widget.update()
 
 
     def update_title_label(self):

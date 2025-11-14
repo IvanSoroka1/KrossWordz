@@ -174,6 +174,9 @@ class CluesPanel(QWidget):
         text_edit = self.clues.get(key)
         if text_edit:
             text_edit.set_grey_text(make_grey)
+    def grey_all_clues(self) -> None:
+        for text_edit in self.clues.values():
+            text_edit.set_grey_text(True)
 
     def highlight_clue(self, number: int, direction: str) -> None:
         """Highlight the requested clue and reset the previous one."""

@@ -22,10 +22,10 @@ class KrossWordCell:
         return self.user_input == self.solution
 
     def reveal(self) -> None:
-        self.user_input = self.solution
-        if not self.corrected:
+        self.corrected = True
+        if self.user_input != self.solution:
+            self.user_input = self.solution
             self.revealed = True
-            self.corrected = True
 
         
 

@@ -465,10 +465,13 @@ class KrossWordWidget(QWidget):
 
         if char:
             was_empty = cell.user_input == ""
+            if rebus:
+                cell.user_input += char
+            else:
+                cell.user_input = char
 
             if was_empty:
-                self.cells_filled +=1
-                self.cell_count_changed.emit(self.cells_filled)
+                self.fill_cell_signals(minus=False)
 
             if self.pencil_mode:
                 cell.pencilled = True
@@ -478,14 +481,8 @@ class KrossWordWidget(QWidget):
             if cell.incorrect:
                 cell.incorrect = False
 
-            if rebus:
-                # if it's a rebus cell, add the character to the user input and don't move
-                cell.user_input += char
-            else:
-                cell.user_input = char
-                if was_empty:
-                    self.check_filled_word()
-
+            # if it's a rebus cell, then don't move
+            if not rebus:
                 start, end = self._get_word_bounds(
                     self.selected_row, self.selected_col, self.highlight_mode
                 )
@@ -508,7 +505,6 @@ class KrossWordWidget(QWidget):
                     else:
                         self._move_right()
                 # if the cell is not empty and it is the last cell then don't move
-        
         self.check_filled_puzzle()
 
         self.value_changed.emit()
@@ -619,9 +615,8 @@ class KrossWordWidget(QWidget):
             # if the current cell is filled and is not corrected, then delete it and don't move back
             if cell.user_input and not cell.corrected:
                 cell.user_input = ""
-                self.cells_filled -= 1
-                self.ungrey_text()
-                self.cell_count_changed.emit(self.cells_filled)
+                self.fill_cell_signals(minus=True)
+
                 self.update()
                 if cell.incorrect:
                     cell.incorrect = False
@@ -633,9 +628,7 @@ class KrossWordWidget(QWidget):
                     if prev_cell and not prev_cell.is_black and not prev_cell.corrected:
                         if prev_cell.user_input:
                             prev_cell.user_input = ""
-                            self.cells_filled -= 1
-                            self.ungrey_text()
-                            self.cell_count_changed.emit(self.cells_filled)
+                            self.fill_cell_signals(minus=True)
                         if prev_cell.incorrect:
                             prev_cell.incorrect = False
                     self.cell_selected.emit(self.selected_row, self.selected_col)
@@ -750,6 +743,14 @@ class KrossWordWidget(QWidget):
                 i += 1
         return True
 
+    def fill_cell_signals(self, minus:bool) -> None:
+        if minus:
+            self.cells_filled -= 1
+            self.ungrey_text()
+        else:
+            self.cells_filled += 1
+            self.check_filled_word()
+        self.cell_count_changed.emit(self.cells_filled)
 
     def _handle_directional_move(self, delta_row: int, delta_col: int) -> None:
         new_row = self.selected_row + delta_row
