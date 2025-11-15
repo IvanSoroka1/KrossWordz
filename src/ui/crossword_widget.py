@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from math import sqrt
 from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Qt, Signal, QPoint, QPointF, QRectF
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon, QPolygonF
 from PySide6.QtWidgets import QWidget, QApplication, QMenu
 
 from models.krossword import KrossWordCell, KrossWordPuzzle
@@ -408,22 +409,25 @@ class KrossWordWidget(QWidget):
             painter.save()
             painter.setBrush(QBrush(Qt.red))
             painter.setPen(Qt.NoPen)
-            triangle = QPolygon(
+
+            triangle = QPolygonF(
                 [
-                    QPoint(x + self.cell_size, y),              # top-right corner
-                    QPoint(x + self.cell_size - 16, y),         # a bit to the left
-                    QPoint(x + self.cell_size, y + 16),         # a bit down the right edge
+                    QPointF(x + self.cell_size, y),              # top-right corner
+                    QPointF(x + (2/3)*self.cell_size, y),         # a bit to the left
+                    QPointF(x + self.cell_size, y + self.cell_size/3),         # a bit down the right edge
                 ]
             )
+
             painter.drawPolygon(triangle)
-            # draw small white circle in the triangle
-            circle_radius = 2
-            circle_center_x = x + self.cell_size - 6   
-            circle_center_y = y + 6
+            # the center of the triangle with lengths of a, is (1/3)a, (1/3)a. This is found by adding the three coordinates of the triangle and diving by the number of coordinates.
+
+            circle_center_x = x + (8/9)*self.cell_size
+            circle_center_y = y + (1/9)*self.cell_size
+            circle_radius =  0.5*(sqrt(2)/6)*(1/3)*self.cell_size
 
             painter.setBrush(QBrush(Qt.white))
             painter.drawEllipse(
-                QPoint(circle_center_x, circle_center_y),
+                QPointF(circle_center_x, circle_center_y),
                 circle_radius,
                 circle_radius,
             )
