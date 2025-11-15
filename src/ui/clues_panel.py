@@ -10,24 +10,19 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTextEdit,
     QScrollArea,
-    QAbstractScrollArea,
 )
 
 
-class CluesTextEdit(QTextEdit):
+class CluesTextEdit(QLabel):
     """Text edit styled for clues that forwards navigation keys to the parent."""
 
     selectClue = Signal(int, str)
 
     def __init__(self, number, direction, parent=None):
         super().__init__(parent)
-        self.setReadOnly(True)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setAlignment(Qt.AlignCenter)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
-        self.document().setDocumentMargin(3)
+        self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.setWordWrap(True)
         self._default_stylesheet = self.styleSheet()
         self.number = number
         self.direction = direction
@@ -35,10 +30,10 @@ class CluesTextEdit(QTextEdit):
         self.styelsheet["highlight"] = ""
         self.styelsheet["grey"] = ""
 
-    def setText(self, text):
-        super().setText(text)
-        self._apply_center_alignment()
-        self._shrink_to_fit()
+    # def setText(self, text):
+    #     super().setText(text)
+        #self._apply_center_alignment()
+        #self._shrink_to_fit()
 
     def keyPressEvent(self, event):  # noqa: N802 (Qt interface)
         if event.key() in (
@@ -72,27 +67,27 @@ class CluesTextEdit(QTextEdit):
         self.setStyleSheet(self.styelsheet["highlight"] + self.styelsheet["grey"])
 
 
-    def _apply_center_alignment(self) -> None:
-        cursor = self.textCursor()
-        cursor.beginEditBlock()
-        cursor.select(QTextCursor.Document)
-        block_format = cursor.blockFormat()
-        block_format.setAlignment(Qt.AlignCenter)
-        cursor.mergeBlockFormat(block_format)
-        cursor.clearSelection()
-        cursor.endEditBlock()
-        self.setTextCursor(cursor)
+    # def _apply_center_alignment(self) -> None:
+    #     cursor = self.textCursor()
+    #     cursor.beginEditBlock()
+    #     cursor.select(QTextCursor.Document)
+    #     block_format = cursor.blockFormat()
+    #     block_format.setAlignment(Qt.AlignCenter)
+    #     cursor.mergeBlockFormat(block_format)
+    #     cursor.clearSelection()
+    #     cursor.endEditBlock()
+    #     self.setTextCursor(cursor)
 
-    def _shrink_to_fit(self) -> None:
-        self.document().adjustSize()
-        doc = self.document()
-        margins = self.contentsMargins()
-        frame = self.frameWidth() * 2
+    # def _shrink_to_fit(self) -> None:
+    #     self.document().adjustSize()
+    #     doc = self.document()
+    #     margins = self.contentsMargins()
+    #     frame = self.frameWidth() * 2
 
-        height = math.ceil(max(doc.size().height(), self.fontMetrics().height()))
-        height += margins.top() + margins.bottom() + frame
+    #     height = math.ceil(max(doc.size().height(), self.fontMetrics().height()))
+    #     height += margins.top() + margins.bottom() + frame
 
-        self.setFixedHeight(height)
+    #     self.setFixedHeight(height)
 
 
 class CluesPanel(QWidget):
@@ -155,14 +150,13 @@ class CluesPanel(QWidget):
             text_edit.selectClue.connect(self._handle_clue_click)
             self.clues[(clue.number, clue.direction)] = text_edit
             self.clueSides[(clue.number, clue.direction)] = sideBox
-            text_edit.setText(clue.text)
+            text_edit.setText(clue.text.strip())
 
             clue_layout.addWidget(sideBox)  
             clue_layout.addWidget(text_edit)
             self.scroll_layout.addLayout(clue_layout)
             last_text_edit = text_edit
 
-        self.scroll_layout.addStretch()
 
         # text_edit = CluesTextEdit(container)
         # section_layout.addWidget(text_edit)

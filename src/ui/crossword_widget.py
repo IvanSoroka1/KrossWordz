@@ -419,7 +419,7 @@ class KrossWordWidget(QWidget):
             )
 
             painter.drawPolygon(triangle)
-            # the center of the triangle with lengths of a, is (1/3)a, (1/3)a. This is found by adding the three coordinates of the triangle and diving by the number of coordinates.
+            # the center of an equilateral triangle with lengths of a, is (1/3)a, (1/3)a. This is found by adding the three coordinates of the triangle and diving by the number of coordinates.
 
             circle_center_x = x + (8/9)*self.cell_size
             circle_center_y = y + (1/9)*self.cell_size
