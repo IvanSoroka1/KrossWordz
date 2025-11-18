@@ -1,5 +1,5 @@
 import math
-
+from ui.SelectableLabel import SelectableLabel
 from PySide6.QtCore import Qt, QPoint, QTimer, QEasingCurve, Signal
 from PySide6.QtGui import QFont, QTextCursor, QTextDocument 
 from PySide6.QtWidgets import (
@@ -15,11 +15,10 @@ from PySide6.QtWidgets import (
 )
 
 
-class CluesTextEdit(QLabel):
+class CluesTextEdit(SelectableLabel):
     """Text edit styled for clues that forwards navigation keys to the parent."""
 
     selectClue = Signal(int, str)
-    lookup_word = Signal(str)
 
     def __init__(self, number, direction, parent=None):
         super().__init__(parent)
@@ -27,30 +26,15 @@ class CluesTextEdit(QLabel):
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.setWordWrap(True)
 
-        self.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-        self.setFocusPolicy(Qt.ClickFocus)  # needed for keyboard selection
-
         self._default_stylesheet = self.styleSheet()
         self.number = number
         self.direction = direction
         self.styelsheet = dict()
         self.styelsheet["highlight"] = ""
         self.styelsheet["grey"] = ""
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._show_menu)
 
 
-    def _show_menu(self, pos: QPoint):
-        menu = QMenu(self)
-        copy_action = menu.addAction("Copy")
-        select_all_action = menu.addAction("Select All")
-        lookup_action = menu.addAction("Lookup this selection in the dictionary")
-        lookup_action.triggered.connect(lambda : self.lookup_word.emit(self.selectedText()))
-        action = menu.exec(self.mapToGlobal(pos))
-        if action == copy_action and self.hasSelectedText():
-            QApplication.clipboard().setText(self.selectedText())
-        elif action == select_all_action:
-            self.setSelection(0, len(self.text()))
+
 
     def setText(self, text):
         """Set clue text and resize the label to tightly wrap the content."""
@@ -130,8 +114,6 @@ class CluesTextEdit(QLabel):
 class CluesPanel(QWidget):
     clue_selected = Signal(int, str)
 
-    lookup_word = Signal(str)
-
     """Container showing across and down clues side by side."""
 
     def __init__(self, across_clues: list[str], down_clues: list[str], parent=None):
@@ -150,9 +132,6 @@ class CluesPanel(QWidget):
         self.scroll_layout = None
         self.across_text_edit = self._create_section(self.layout, "ACROSS", across_clues)
         self.down_text_edit = self._create_section(self.layout, "DOWN", down_clues)
-
-    def lookup(self, word: str) -> None:
-        self.lookup_word.emit(word)
 
     def _create_section(self, parent_layout: QHBoxLayout, title: str, clues: list[str] ) -> CluesTextEdit:
         container = QWidget(self)
@@ -188,7 +167,6 @@ class CluesPanel(QWidget):
             sideBox.setStyleSheet(f"background-color: {self.default_color};") 
             sideBox.setFixedWidth(12)
             text_edit = CluesTextEdit(clue.number, clue.direction, scroll_content)
-            text_edit.lookup_word.connect(self.lookup)
             text_edit.selectClue.connect(self._handle_clue_click)
             self.clues[(clue.number, clue.direction)] = text_edit
             self.clueSides[(clue.number, clue.direction)] = sideBox

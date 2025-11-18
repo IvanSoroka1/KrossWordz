@@ -5,6 +5,7 @@ from pathlib import Path
 from ui.message_dialog import show_message
 from ui.ai_windows import ai_window
 from ui.check_and_reveal import Check_and_Reveal
+from ui.SelectableLabel import SelectableLabel
 
 from PySide6.QtCore import Qt, QTimer, QSize, QSettings
 from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap, QPalette
@@ -211,7 +212,7 @@ class MainWindow(QMainWindow):
         left_layout.addLayout(timer_row)
 
         # Current clue display above crossword
-        self.current_clue_label = QLabel("Select a cell to see clue")
+        self.current_clue_label = SelectableLabel(text="Select a cell to see clue")
         self.current_clue_label.setFont(QFont("Arial", 12, QFont.Bold))
         self.current_clue_label.setWordWrap(True)
         self.current_clue_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
@@ -241,8 +242,6 @@ class MainWindow(QMainWindow):
         self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
 
         self.check_and_reveal = None
-
-        self.crossword_widget.lookup_word.connect(self.ai_page.open_onelook)
 
         self.main_tabs.addTab(self.ai_page, "AI")
         self.main_tabs.setTabToolTip(1, "AI")
@@ -368,7 +367,6 @@ class MainWindow(QMainWindow):
 
             self.clues_panel = CluesPanel(self.crossword_widget.puzzle.across_clues, self.crossword_widget.puzzle.down_clues)
             self.clues_panel.clue_selected.connect(self.on_clue_selected)
-            self.clues_panel.lookup_word.connect(self.ai_page.open_onelook)
 
             right_layout.addWidget(self.clues_panel)
             right_layout.setStretchFactor(self.clues_panel, 1)

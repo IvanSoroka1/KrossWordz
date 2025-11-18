@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QWidget, QApplication, QMenu
 
 from models.krossword import KrossWordCell, KrossWordPuzzle
 from ui.ai_windows import ai_window
-
+from ui.lookup import open_onelook
 
 class KrossWordWidget(QWidget):
     """Widget for displaying and interacting with a crossword puzzle."""
@@ -21,7 +21,6 @@ class KrossWordWidget(QWidget):
     request_clue_explanation = Signal(str, str)
     cell_count_changed = Signal(int)
     greyout_clue = Signal(int, str, bool)
-    lookup_word = Signal(str)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -58,7 +57,7 @@ class KrossWordWidget(QWidget):
         explain_action = menu.addAction("Explain this clue and answer pair")
         explain_action.triggered.connect(lambda : self.request_clue_explanation.emit(clue.text, clue.answer))
         lookup_action = menu.addAction("Lookup this answer in the dictionary")
-        lookup_action.triggered.connect(lambda : self.lookup_word.emit(clue.answer) )
+        lookup_action.triggered.connect(lambda : open_onelook(clue.answer))
         menu.exec(self.mapToGlobal(pos))
     
 
