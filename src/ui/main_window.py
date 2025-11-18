@@ -213,7 +213,8 @@ class MainWindow(QMainWindow):
 
         # Current clue display above crossword
         self.current_clue_label = SelectableLabel(text="Select a cell to see clue")
-        self.current_clue_label.setFont(QFont("Arial", 12, QFont.Bold))
+        self.current_clue_label.setTextFormat(Qt.RichText)
+        self.current_clue_label.setFont(QFont("Arial", 12))
         self.current_clue_label.setWordWrap(True)
         self.current_clue_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         #self.current_clue_label.setMinimumHeight(30)
@@ -611,4 +612,4 @@ class MainWindow(QMainWindow):
             clue_text = ""
             print("No clue found for this cell")
 
-        self.current_clue_label.setText(clue_text)
+        self.current_clue_label.setText(f"<b>{clue.number}{'A' if clue.direction == 'across' else 'D'}</b> {clue.text}")

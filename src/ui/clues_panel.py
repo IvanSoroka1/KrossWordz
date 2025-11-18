@@ -25,6 +25,7 @@ class CluesTextEdit(SelectableLabel):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.setWordWrap(True)
+        self.setTextFormat(Qt.RichText)
 
         self._default_stylesheet = self.styleSheet()
         self.number = number
@@ -75,18 +76,6 @@ class CluesTextEdit(SelectableLabel):
     def applyStyleSheet(self):
         self.setStyleSheet(self.styelsheet["highlight"] + self.styelsheet["grey"])
 
-
-    # def _apply_center_alignment(self) -> None:
-    #     cursor = self.textCursor()
-    #     cursor.beginEditBlock()
-    #     cursor.select(QTextCursor.Document)
-    #     block_format = cursor.blockFormat()
-    #     block_format.setAlignment(Qt.AlignCenter)
-    #     cursor.mergeBlockFormat(block_format)
-    #     cursor.clearSelection()
-    #     cursor.endEditBlock()
-    #     self.setTextCursor(cursor)
-
     def _shrink_to_fit(self) -> None:
         """Match label height to wrapped text height."""
         available_width = self.width()
@@ -98,9 +87,7 @@ class CluesTextEdit(SelectableLabel):
 
         doc = QTextDocument()
         doc.setDefaultFont(self.font())
-        # if Qt.mightBeRichText(self.text()):
-        #     doc.setHtml(self.text())
-        doc.setPlainText(self.text())
+        doc.setHtml(self.text())
         doc.setDocumentMargin(0)
         doc.setTextWidth(text_width)
 
@@ -170,7 +157,7 @@ class CluesPanel(QWidget):
             text_edit.selectClue.connect(self._handle_clue_click)
             self.clues[(clue.number, clue.direction)] = text_edit
             self.clueSides[(clue.number, clue.direction)] = sideBox
-            text_edit.setText(clue.text.strip())
+            text_edit.setText(f"<b>{clue.number}</b> {clue.text.strip()}")
 
             clue_layout.addWidget(sideBox)  
             clue_layout.addWidget(text_edit)
