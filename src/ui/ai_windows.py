@@ -5,6 +5,7 @@ from PySide6.QtCore import QSettings, QThread, Signal, QObject, Slot
 
 import google.generativeai as genai
 
+import webbrowser
 
 
 class ai_window(QWidget):
@@ -32,6 +33,11 @@ class ai_window(QWidget):
         outer_layout.addWidget(scroll_area)
 
         self.setLayout(outer_layout)
+    
+    def open_onelook(self, word: str) -> None:
+        url = f"https://www.onelook.com/?w={word}"
+        webbrowser.open(url, new=2)
+
 
     def explain_clue(self, clue, answer):
         if self.gemini_model == None:
@@ -80,7 +86,6 @@ class ai_window(QWidget):
             label.setMaximumWidth(available_width)
         
 
-    
         
 
         

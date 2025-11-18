@@ -59,7 +59,6 @@ class MainWindow(QMainWindow):
         self.puzzle_timer.setInterval(1000)
         self.puzzle_timer.timeout.connect(self._update_timer_display)
         self.clues_panel = None
-        self.ai_page = None
 
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -243,6 +242,8 @@ class MainWindow(QMainWindow):
 
         self.check_and_reveal = None
 
+        self.crossword_widget.lookup_word.connect(self.ai_page.open_onelook)
+
         self.main_tabs.addTab(self.ai_page, "AI")
         self.main_tabs.setTabToolTip(1, "AI")
 
@@ -367,6 +368,8 @@ class MainWindow(QMainWindow):
 
             self.clues_panel = CluesPanel(self.crossword_widget.puzzle.across_clues, self.crossword_widget.puzzle.down_clues)
             self.clues_panel.clue_selected.connect(self.on_clue_selected)
+            self.clues_panel.lookup_word.connect(self.ai_page.open_onelook)
+
             right_layout.addWidget(self.clues_panel)
             right_layout.setStretchFactor(self.clues_panel, 1)
 
