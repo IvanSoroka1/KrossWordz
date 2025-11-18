@@ -11,7 +11,8 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QScrollArea,
     QApplication,
-    QMenu
+    QMenu,
+    QFrame,
 )
 
 
@@ -66,7 +67,7 @@ class CluesTextEdit(SelectableLabel):
 
     def set_highlighted(self, highlighted: bool) -> None:
         """Toggle highlight coloring on the text edit background."""
-        self.styelsheet["highlight"] = "background-color: #47c8ff;" if highlighted else ""
+        self.styelsheet["highlight"] = "background-color: #47c8ff;" if highlighted else "background-color: transparent;"
         self.applyStyleSheet()
         
     def set_grey_text(self, make_grey: bool) -> None:
@@ -110,12 +111,17 @@ class CluesPanel(QWidget):
         self.layout.setSpacing(10)
         self.setLayout(self.layout)
         self.clues = dict()
-        self.clueSides = dict()
+        self.clue_sides = dict()
         self._scroll_areas = dict()
         self._highlighted_key = None
         self._side_highlighted_key = None
         self.highlight_color = "#47c8ff"
-        self.default_color = "#868686"
+        #bg_color = self.palette().color(parent.backgroundRole()).name()
+        #self.setStyleSheet(f"background-color: {bg_color};")
+        #bg_color = self.palette().color(self.backgroundRole()).name()
+        #self.setPalette(self.parent().palette())
+        #self.default_color = self.palette().color(self.backgroundRole()).name()
+        self.default_color = self.palette().color(parent.backgroundRole()).name()
         self.scroll_layout = None
         self.across_text_edit = self._create_section(self.layout, "ACROSS", across_clues)
         self.down_text_edit = self._create_section(self.layout, "DOWN", down_clues)
@@ -134,6 +140,9 @@ class CluesPanel(QWidget):
         section_layout.addWidget(label)
 
         scroll_area = QScrollArea(container)
+        # Remove the default frame; styling the viewport alone won't hide it.
+        scroll_area.setFrameShape(QFrame.NoFrame)
+        scroll_area.viewport().setStyleSheet("background-color: transparent;")
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         section_layout.addWidget(scroll_area)
@@ -151,22 +160,27 @@ class CluesPanel(QWidget):
         for clue in clues:
             clue_layout = QHBoxLayout()
             sideBox = QWidget()
-            sideBox.setStyleSheet(f"background-color: {self.default_color};") 
-            sideBox.setFixedWidth(12)
+            sideBox.setFixedWidth(6)
+
+            clue_number = QLabel(str(clue.number), scroll_content)
+            clue_number.setAlignment(Qt.AlignRight)
+            clue_number.setFixedWidth(24)
+            clue_font = QFont("Arial")
+            clue_font.setBold(True)
+            clue_number.setFont(clue_font)
+
             text_edit = CluesTextEdit(clue.number, clue.direction, scroll_content)
             text_edit.selectClue.connect(self._handle_clue_click)
             self.clues[(clue.number, clue.direction)] = text_edit
-            self.clueSides[(clue.number, clue.direction)] = sideBox
-            text_edit.setText(f"<b>{clue.number}</b> {clue.text.strip()}")
+            self.clue_sides[(clue.number, clue.direction)] = sideBox
+            text_edit.setText(clue.text.strip())
 
             clue_layout.addWidget(sideBox)  
+            clue_layout.addWidget(clue_number)
             clue_layout.addWidget(text_edit)
             self.scroll_layout.addLayout(clue_layout)
             last_text_edit = text_edit
 
-
-        # text_edit = CluesTextEdit(container)
-        # section_layout.addWidget(text_edit)
         parent_layout.addWidget(container)
         return last_text_edit
 
@@ -200,14 +214,14 @@ class CluesPanel(QWidget):
     
     def highlight_clue_side(self, number: int, direction: str) -> None:
         key = (number, direction)
-        sideBox = self.clueSides.get(key)
+        sideBox = self.clue_sides.get(key)
         if key == self._side_highlighted_key:
             if sideBox:
                 self._scroll_clue_into_view(direction, sideBox)
             return
 
-        if self._side_highlighted_key and self._side_highlighted_key in self.clueSides:
-            self.clueSides[self._side_highlighted_key].setStyleSheet(f"background-color: {self.default_color};")
+        if self._side_highlighted_key and self._side_highlighted_key in self.clue_sides:
+            self.clue_sides[self._side_highlighted_key].setStyleSheet(f"background-color: transparent;")
 
         if sideBox:
             sideBox.setStyleSheet(f"background-color: {self.highlight_color};")
