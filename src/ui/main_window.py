@@ -6,7 +6,7 @@ from ui.message_dialog import show_message
 from ui.ai_windows import ai_window
 from ui.check_and_reveal import Check_and_Reveal
 from ui.SelectableLabel import SelectableLabel
-
+from ui.current_clue_widget import Current_Clue_Widget
 from PySide6.QtCore import Qt, QTimer, QSize, QSettings
 from PySide6.QtGui import QAction, QFont, QIcon, QColor, QPainter, QPixmap, QPalette
 from PySide6.QtWidgets import (
@@ -211,14 +211,20 @@ class MainWindow(QMainWindow):
         timer_row.addStretch()
         left_layout.addLayout(timer_row)
 
+
         # Current clue display above crossword
-        self.current_clue_label = SelectableLabel(text="Select a cell to see clue")
-        self.current_clue_label.setTextFormat(Qt.RichText)
-        self.current_clue_label.setFont(QFont("Arial", 12))
-        self.current_clue_label.setWordWrap(True)
-        self.current_clue_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        #self.current_clue_label.setMinimumHeight(30)
-        left_layout.addWidget(self.current_clue_label)
+        # self.current_clue_label = SelectableLabel(text="Select a cell to see clue")
+        # self.current_clue_label.setContentsMargins(20, 5, 0, 5)
+        # self.current_clue_label.setTextFormat(Qt.RichText)
+        # self.current_clue_label.setFont(QFont("Arial", 12))
+        # self.current_clue_label.setWordWrap(True)
+        # self.current_clue_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        # self.current_clue_label.setStyleSheet("background-color: #47c8ff;")
+        # self.current_clue_label.setMinimumHeight(60)
+        # left_layout.addWidget(self.current_clue_label)
+
+        self.current_clue_widget = Current_Clue_Widget()
+        left_layout.addWidget(self.current_clue_widget)
 
         # Crossword grid
         self.crossword_widget = KrossWordWidget()
@@ -612,4 +618,5 @@ class MainWindow(QMainWindow):
             clue_text = ""
             print("No clue found for this cell")
 
-        self.current_clue_label.setText(f"<b>{clue.number}{'A' if clue.direction == 'across' else 'D'}</b> {clue.text}")
+        #self.current_clue_label.setText(f"<b>{clue.number}{'A' if clue.direction == 'across' else 'D'}</b> {clue.text}")
+        self.current_clue_widget.set_clue(clue)
