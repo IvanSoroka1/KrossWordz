@@ -151,34 +151,43 @@ class CluesPanel(QWidget):
         scroll_content = QWidget(scroll_area)
         self.scroll_layout = QVBoxLayout()
         self.scroll_layout.setContentsMargins(0, 0, 0, 0)
-        self.scroll_layout.setSpacing(4)
+        self.scroll_layout.setSpacing(8)
         scroll_content.setLayout(self.scroll_layout)
         scroll_area.setWidget(scroll_content)
 
         last_text_edit = None
 
         for clue in clues:
+            clue_widget = QWidget()
             clue_layout = QHBoxLayout()
+            clue_layout.setContentsMargins(0, 4, 0, 4)
+            clue_layout.setSpacing(0)
+
             sideBox = QWidget()
-            sideBox.setFixedWidth(6)
+            sideBox.setFixedWidth(8)
 
             clue_number = QLabel(str(clue.number), scroll_content)
             clue_number.setAlignment(Qt.AlignRight)
-            clue_number.setFixedWidth(24)
+            clue_number.setFixedWidth(20)
             clue_font = QFont("Arial")
             clue_font.setBold(True)
             clue_number.setFont(clue_font)
 
             text_edit = CluesTextEdit(clue.number, clue.direction, scroll_content)
             text_edit.selectClue.connect(self._handle_clue_click)
-            self.clues[(clue.number, clue.direction)] = text_edit
-            self.clue_sides[(clue.number, clue.direction)] = sideBox
             text_edit.setText(clue.text.strip())
 
             clue_layout.addWidget(sideBox)  
             clue_layout.addWidget(clue_number)
+            clue_layout.addSpacing(12)
             clue_layout.addWidget(text_edit)
-            self.scroll_layout.addLayout(clue_layout)
+
+            clue_widget.setLayout(clue_layout)
+            self.scroll_layout.addWidget(clue_widget)
+
+            self.clues[(clue.number, clue.direction)] = clue_widget
+            self.clue_sides[(clue.number, clue.direction)] = sideBox
+
             last_text_edit = text_edit
 
         parent_layout.addWidget(container)
@@ -203,10 +212,11 @@ class CluesPanel(QWidget):
             return
 
         if self._highlighted_key and self._highlighted_key in self.clues:
-            self.clues[self._highlighted_key].set_highlighted(False)
+            self.clues[self._highlighted_key].setStyleSheet(f"background-color: transparent;")
 
         if text_edit:
-            text_edit.set_highlighted(True)
+            #text_edit.set_highlighted(True)
+            text_edit.setStyleSheet(f"background-color: {self.highlight_color};")
             self._highlighted_key = key
             self._scroll_clue_into_view(direction, text_edit)
         else:
