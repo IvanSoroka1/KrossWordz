@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Qt, Signal, QPoint, QPointF, QRectF
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygon, QPolygonF
-from PySide6.QtWidgets import QWidget, QApplication, QMenu
+from PySide6.QtWidgets import QWidget, QApplication, QMenu, QSizePolicy
 
 from models.krossword import KrossWordCell, KrossWordPuzzle
 from ui.ai_windows import ai_window
@@ -21,6 +21,7 @@ class KrossWordWidget(QWidget):
     request_clue_explanation = Signal(str, str)
     cell_count_changed = Signal(int)
     greyout_clue = Signal(int, str, bool)
+    resize_current_clue = Signal(int)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -43,6 +44,10 @@ class KrossWordWidget(QWidget):
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    def get_grid_width(self):
+        if not self.puzzle:
+            return None
+        return self.cell_size * self.puzzle.width
 
     def show_context_menu(self, pos: QPoint) -> None:
         row = pos.y()//self.cell_size
@@ -134,6 +139,10 @@ class KrossWordWidget(QWidget):
         cell_height = max(1, available_height // self.puzzle.height)
         self.cell_size = max(1, min(cell_width, cell_height))
         self.font_size = int(self.cell_size * 0.65)
+        self.resize_current_clue.emit(self.cell_size*self.puzzle.width)
+
+
+
 
     def get_current_cell(self) -> Optional[KrossWordCell]:
         if self.puzzle and 0 <= self.selected_row < self.puzzle.height:

@@ -60,6 +60,7 @@ class MainWindow(QMainWindow):
         self.puzzle_timer.setInterval(1000)
         self.puzzle_timer.timeout.connect(self._update_timer_display)
         self.clues_panel = None
+        self.current_clue_widget = None
 
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -146,9 +147,9 @@ class MainWindow(QMainWindow):
         self.right_panel = None
         # Left panel: Crossword and current clue
         left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setSpacing(-1)
-        left_layout.setContentsMargins(-1, -1, -1, -1)
+        self.left_layout = QVBoxLayout(left_panel)
+        self.left_layout.setSpacing(-1)
+        self.left_layout.setContentsMargins(-1, -1, -1, -1)
 
         # Timer display above current clue
         timer_row = QHBoxLayout()
@@ -194,6 +195,7 @@ class MainWindow(QMainWindow):
         pencil_icon = self._create_colored_icon(
             QIcon(str(pencil_icon_path)), QColor(Qt.white), icon_size
         )
+
         self.pencil_button.setIcon(pencil_icon)
         self.pencil_button.setFixedSize(36, 36)
         self.pencil_button.setToolTip("Enable/disable pencil mode")
@@ -209,44 +211,17 @@ class MainWindow(QMainWindow):
         timer_row.addWidget(self.cells_filled)
 
         timer_row.addStretch()
-        left_layout.addLayout(timer_row)
+        self.left_layout.addLayout(timer_row)
 
-
-        # Current clue display above crossword
-        # self.current_clue_label = SelectableLabel(text="Select a cell to see clue")
-        # self.current_clue_label.setContentsMargins(20, 5, 0, 5)
-        # self.current_clue_label.setTextFormat(Qt.RichText)
-        # self.current_clue_label.setFont(QFont("Arial", 12))
-        # self.current_clue_label.setWordWrap(True)
-        # self.current_clue_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        # self.current_clue_label.setStyleSheet("background-color: #47c8ff;")
-        # self.current_clue_label.setMinimumHeight(60)
-        # left_layout.addWidget(self.current_clue_label)
-
-        self.current_clue_widget = Current_Clue_Widget()
-        left_layout.addWidget(self.current_clue_widget)
-
-        # Crossword grid
-        self.crossword_widget = KrossWordWidget()
-        self.crossword_widget.cell_selected.connect(self.on_cell_selected)
-        self.crossword_widget.value_changed.connect(self.raise_updated_signal)
-        self.crossword_widget.display_message.connect(self.display_message)
-        self.crossword_widget.cell_count_changed.connect(self.on_cell_count_changed)
-
-        self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
-        self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
-        left_layout.addWidget(self.crossword_widget)
-        left_layout.setStretchFactor(self.crossword_widget, 1)
 
         # Right panel: puzzle info, clues, and actions
         self.layout.addWidget(left_panel)
-        self.layout.setStretch(0, 3)
+        #self.layout.setStretch(0, 3)
 
         self.main_tabs.addTab(puzzle_page, "Puzzle")
         self.main_tabs.setTabToolTip(0, "Crossword")
 
         self.ai_page = ai_window()
-        self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
 
         self.check_and_reveal = None
 
@@ -327,7 +302,24 @@ class MainWindow(QMainWindow):
         try:
             self.current_puzzle = self.file_loader_service.load_ipuz_file(normalized_path)
             self.current_puzzle_path = normalized_path
+            self.crossword_widget = KrossWordWidget()
             self.crossword_widget.set_puzzle(self.current_puzzle)
+
+            self.current_clue_widget = Current_Clue_Widget()
+            self.left_layout.addWidget(self.current_clue_widget)
+
+            # Crossword grid
+            self.crossword_widget.cell_selected.connect(self.on_cell_selected)
+            self.crossword_widget.value_changed.connect(self.raise_updated_signal)
+            self.crossword_widget.display_message.connect(self.display_message)
+            self.crossword_widget.cell_count_changed.connect(self.on_cell_count_changed)
+            self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
+            self.crossword_widget.resize_current_clue.connect(self.current_clue_widget.resize)
+
+            self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
+            self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
+            self.left_layout.addWidget(self.crossword_widget)
+            self.left_layout.setStretchFactor(self.crossword_widget, 1)
 
             self.check_and_reveal = Check_and_Reveal(self.crossword_widget, self.current_puzzle)
             
@@ -391,7 +383,7 @@ class MainWindow(QMainWindow):
             self.cells_filled.setText(f"{self.crossword_widget.cells_filled}/{self.current_puzzle.fillable_cell_count}")
             self.cells_filled.setVisible(True)
 
-            self.layout.setStretch(1, 2)
+            #self.layout.setStretch(1, 2)
             self.update_title_label()
             self.start_puzzle_timer()
 

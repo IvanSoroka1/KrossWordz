@@ -5,16 +5,18 @@ from PySide6.QtWidgets import QLabel, QHBoxLayout, QVBoxLayout, QWidget
 from ui.SelectableLabel import SelectableLabel
 
 class Current_Clue_Widget(QWidget):
-    def __init__(self):
+    def __init__(self, width = None):
         super().__init__()
         shared_bg = "#47c8ff"
 
-        # Container widget paints the background; spacing inherits its color.
-        container = QWidget(self)
-        container.setAutoFillBackground(True)
-        container.setStyleSheet(f"background-color: {shared_bg};")
+        # self.container widget paints the background; spacing inherits its color.
+        self.container = QWidget(self)
+        self.container.setAutoFillBackground(True)
+        self.container.setStyleSheet(f"background-color: {shared_bg};")
+        if width:
+            self.container.setFixedWidth(width)
 
-        self.current_clue_label = SelectableLabel(container, text="Select a cell to see clue")
+        self.current_clue_label = SelectableLabel(self.container, text="Select a cell to see clue")
         self.current_clue_label.setTextFormat(Qt.RichText)
         self.current_clue_label.setFont(QFont("Arial", 12))
         self.current_clue_label.setWordWrap(True)
@@ -29,17 +31,17 @@ class Current_Clue_Widget(QWidget):
         self.number_label.setFont(font)
         self.number_label.setStyleSheet("background-color: transparent;")
 
-        row_layout = QHBoxLayout(container)
+        row_layout = QHBoxLayout(self.container)
         row_layout.setContentsMargins(0, 0, 0, 0)
         row_layout.addSpacing(12)
         row_layout.addWidget(self.number_label)
         row_layout.addSpacing(12)
         row_layout.addWidget(self.current_clue_label)
-        container.setLayout(row_layout)
+        self.container.setLayout(row_layout)
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(0, 0, 0, 0)
-        outer_layout.addWidget(container)
+        outer_layout.addWidget(self.container)
         self.setLayout(outer_layout)
 
 
@@ -47,3 +49,6 @@ class Current_Clue_Widget(QWidget):
         #self.current_clue_label.setText(f"<b>{clue.number}{'A' if clue.direction == 'across' else 'D'}</b><span style='margin-left:12px'></span>{clue.text}")
         self.number_label.setText(f"{clue.number}{'A' if clue.direction == 'across' else 'D'}")
         self.current_clue_label.setText(f"{clue.text}")
+    
+    def resize(self, width):
+        self.container.setFixedWidth(width)

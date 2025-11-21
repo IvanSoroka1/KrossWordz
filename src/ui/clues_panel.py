@@ -116,11 +116,6 @@ class CluesPanel(QWidget):
         self._highlighted_key = None
         self._side_highlighted_key = None
         self.highlight_color = "#47c8ff"
-        #bg_color = self.palette().color(parent.backgroundRole()).name()
-        #self.setStyleSheet(f"background-color: {bg_color};")
-        #bg_color = self.palette().color(self.backgroundRole()).name()
-        #self.setPalette(self.parent().palette())
-        #self.default_color = self.palette().color(self.backgroundRole()).name()
         self.default_color = self.palette().color(parent.backgroundRole()).name()
         self.scroll_layout = None
         self.across_text_edit = self._create_section(self.layout, "ACROSS", across_clues)
@@ -142,6 +137,7 @@ class CluesPanel(QWidget):
         scroll_area = QScrollArea(container)
         # Remove the default frame; styling the viewport alone won't hide it.
         scroll_area.setFrameShape(QFrame.NoFrame)
+        
         scroll_area.viewport().setStyleSheet("background-color: transparent;")
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)

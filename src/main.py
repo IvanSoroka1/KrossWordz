@@ -39,7 +39,6 @@ def _parse_command_line(argv: List[str]) -> Tuple[Optional[str], List[str]]:
 
 def main():
     """Main entry point for the application."""
-
     requested_file, qt_argv = _parse_command_line(sys.argv)
     app = CrossWordzApplication(qt_argv)
 
