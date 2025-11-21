@@ -61,6 +61,8 @@ class MainWindow(QMainWindow):
         self.puzzle_timer.timeout.connect(self._update_timer_display)
         self.clues_panel = None
         self.current_clue_widget = None
+        self.crossword_widget = None
+        self.shown = False
 
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -241,7 +243,13 @@ class MainWindow(QMainWindow):
             self.pause_puzzle_timer()
             self.resume_button.setVisible(False)
             self.pause_button.setVisible(False)
-        show_message(self, correct)
+        if correct or not self.shown:
+            show_message(self, correct)
+
+        if not self.shown:
+            self.shown = True
+
+        
 
     def _style_icon_button(self, button: QPushButton) -> None:
         """Apply a transparent style for icon-only buttons."""
@@ -302,24 +310,28 @@ class MainWindow(QMainWindow):
         try:
             self.current_puzzle = self.file_loader_service.load_ipuz_file(normalized_path)
             self.current_puzzle_path = normalized_path
-            self.crossword_widget = KrossWordWidget()
+            
+            if not self.current_clue_widget:
+                self.current_clue_widget = Current_Clue_Widget()
+                self.left_layout.addWidget(self.current_clue_widget)
+
+            if not self.crossword_widget:
+                self.crossword_widget = KrossWordWidget()
+
+                # Crossword grid
+                self.crossword_widget.cell_selected.connect(self.on_cell_selected)
+                self.crossword_widget.value_changed.connect(self.raise_updated_signal)
+                self.crossword_widget.display_message.connect(self.display_message)
+                self.crossword_widget.cell_count_changed.connect(self.on_cell_count_changed)
+                self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
+                self.crossword_widget.resize_current_clue.connect(self.current_clue_widget.resize)
+
+                self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
+                self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
+                self.left_layout.addWidget(self.crossword_widget)
+                self.left_layout.setStretchFactor(self.crossword_widget, 1)
+
             self.crossword_widget.set_puzzle(self.current_puzzle)
-
-            self.current_clue_widget = Current_Clue_Widget()
-            self.left_layout.addWidget(self.current_clue_widget)
-
-            # Crossword grid
-            self.crossword_widget.cell_selected.connect(self.on_cell_selected)
-            self.crossword_widget.value_changed.connect(self.raise_updated_signal)
-            self.crossword_widget.display_message.connect(self.display_message)
-            self.crossword_widget.cell_count_changed.connect(self.on_cell_count_changed)
-            self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
-            self.crossword_widget.resize_current_clue.connect(self.current_clue_widget.resize)
-
-            self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
-            self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
-            self.left_layout.addWidget(self.crossword_widget)
-            self.left_layout.setStretchFactor(self.crossword_widget, 1)
 
             self.check_and_reveal = Check_and_Reveal(self.crossword_widget, self.current_puzzle)
             
