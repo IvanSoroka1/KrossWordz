@@ -111,7 +111,7 @@ class CluesPanel(QWidget):
         self.layout.setSpacing(10)
         self.setLayout(self.layout)
         self.clues = dict()
-        self.clue_sides = dict()
+        #self.clue_sides = dict()
         self._scroll_areas = dict()
         self._highlighted_key = None
         self._side_highlighted_key = None
@@ -155,12 +155,15 @@ class CluesPanel(QWidget):
 
         for clue in clues:
             clue_widget = QWidget()
+            clue_widget.setContentsMargins(0, 4, 0, 4)
+            clue_widget.setStyleSheet("border-left: 8px solid; border-color: transparent;")
             clue_layout = QHBoxLayout()
-            clue_layout.setContentsMargins(0, 4, 0, 4)
+            clue_layout.setContentsMargins(0, 0, 0, 0)
             clue_layout.setSpacing(0)
 
-            sideBox = QWidget()
-            sideBox.setFixedWidth(8)
+            #sideBox = QWidget()
+            #sideBox.setFixedWidth(8)
+            #sideBox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
             clue_number = QLabel(str(clue.number), scroll_content)
             clue_number.setAlignment(Qt.AlignRight)
@@ -173,16 +176,18 @@ class CluesPanel(QWidget):
             text_edit.selectClue.connect(self._handle_clue_click)
             text_edit.setText(clue.text.strip())
 
-            clue_layout.addWidget(sideBox)  
+            #clue_layout.addWidget(sideBox)  
+            clue_layout.addSpacing(12)
             clue_layout.addWidget(clue_number)
             clue_layout.addSpacing(12)
             clue_layout.addWidget(text_edit)
 
             clue_widget.setLayout(clue_layout)
+            clue_widget.setObjectName("clueRow")
             self.scroll_layout.addWidget(clue_widget)
 
             self.clues[(clue.number, clue.direction)] = clue_widget
-            self.clue_sides[(clue.number, clue.direction)] = sideBox
+            #self.clue_sides[(clue.number, clue.direction)] = sideBox
 
             last_text_edit = text_edit
 
@@ -207,34 +212,51 @@ class CluesPanel(QWidget):
                 self._scroll_clue_into_view(direction, text_edit)
             return
 
-        if self._highlighted_key and self._highlighted_key in self.clues:
-            self.clues[self._highlighted_key].setStyleSheet(f"background-color: transparent;")
+        if self._highlighted_key and self._highlighted_key != self._side_highlighted_key:
+            self.clues[self._highlighted_key].setStyleSheet("""
+            QWidget#clueRow {border-left: 8px solid transparent; background-color: transparent; } # if the side bar is highlighted, then it should be kept highlighted
+            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
+            """)
 
         if text_edit:
-            #text_edit.set_highlighted(True)
-            text_edit.setStyleSheet(f"background-color: {self.highlight_color};")
+            text_edit.setStyleSheet("""
+            QWidget#clueRow { border-left: 8px solid #47c8ff; background-color: #47c8ff; }
+            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
+            """)           
             self._highlighted_key = key
             self._scroll_clue_into_view(direction, text_edit)
         else:
             self._highlighted_key = None
     
+
+    
     def highlight_clue_side(self, number: int, direction: str) -> None:
         key = (number, direction)
-        sideBox = self.clue_sides.get(key)
+        sideBox = self.clues.get(key)
+
         if key == self._side_highlighted_key:
             if sideBox:
                 self._scroll_clue_into_view(direction, sideBox)
             return
 
-        if self._side_highlighted_key and self._side_highlighted_key in self.clue_sides:
-            self.clue_sides[self._side_highlighted_key].setStyleSheet(f"background-color: transparent;")
+        if self._side_highlighted_key:
+            #self.clues[self._side_highlighted_key].setStyleSheet(f"border-left: 8px solid; border-color: transparent; background-color: transparent;")
+            self.clues[self._side_highlighted_key].setStyleSheet("""
+            QWidget#clueRow { border-left: 8px solid transparent; background-color: transparent; }
+            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
+            """)
 
         if sideBox:
-            sideBox.setStyleSheet(f"background-color: {self.highlight_color};")
+            sideBox.setStyleSheet("""
+            QWidget#clueRow { border-left: 8px solid #47c8ff; background-color: transparent; }
+            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
+            """)
             self._side_highlighted_key = key
             self._scroll_clue_into_view(direction, sideBox)
         else:
             self._side_highlighted_key = None
+        
+    
 
     def clear_highlight(self) -> None:
         """Remove highlight from the currently highlighted clue, if any."""
