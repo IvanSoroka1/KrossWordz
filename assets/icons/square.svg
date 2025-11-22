@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="150" height="150" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Outer rounded square -->
+  <rect x="0" y="0" width="150" height="150" rx="10" ry="10" fill="white" stroke="black" stroke-width="4"/>
+
+  <!-- Offset to avoid overlapping the border -->
+  <defs>
+    <style>
+      .grid { stroke: gray; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <!-- Grid lines (inset by 2px from edges) -->
+  <!-- Vertical lines -->
+  <line x1="50" y1="2" x2="50" y2="148" class="grid"/>
+  <line x1="100" y1="2" x2="100" y2="148" class="grid"/>
+  <!-- Horizontal lines -->
+  <line x1="2" y1="50" x2="148" y2="50" class="grid"/>
+  <line x1="2" y1="100" x2="148" y2="100" class="grid"/>
+
+  <!-- Black diagonal cells -->
+  <!-- Bottom-left -->
+  <rect x="0" y="100" width="50" height="50" fill="black"/>
+  <!-- Middle -->
+  <rect x="50" y="50" width="50" height="50" fill="black"/>
+  <!-- Top-right -->
+  <rect x="100" y="0" width="50" height="50" fill="black"/>
+
+</svg>
+

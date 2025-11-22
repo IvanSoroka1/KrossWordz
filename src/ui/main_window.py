@@ -1,4 +1,5 @@
 import os
+import traceback
 import json
 from pathlib import Path
 from datetime import datetime
@@ -29,6 +30,8 @@ from ui.preferences import preferences
 from services.file_loader import FileLoaderService
 from ui.clues_panel import CluesPanel
 from ui.crossword_widget import KrossWordWidget
+from ui.calendar import Calendar
+from ui.crossword_window import timer_row, load_puzzle
 
 class MainWindow(QMainWindow):
     """Main application window"""
@@ -55,7 +58,6 @@ class MainWindow(QMainWindow):
         self.elapsed_seconds = 0
         self.timer_running = False
         self.layout = None
-        self.init_ui()
         self.puzzle_timer = QTimer(self)
         self.puzzle_timer.setInterval(1000)
         self.puzzle_timer.timeout.connect(self._update_timer_display)
@@ -64,6 +66,9 @@ class MainWindow(QMainWindow):
         self.crossword_widget = None
         self.shown = False
         self.date_label = None
+        self.right_panel = None
+        self.left_panel = None
+        self.init_ui()
 
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -140,96 +145,26 @@ class MainWindow(QMainWindow):
 
         # Central widget with splitter
         central_widget = QWidget()
+
         self.setCentralWidget(self.main_tabs)
         puzzle_page = QWidget()
-
         self.layout = QHBoxLayout(puzzle_page)
         self.layout.setSpacing(-1)
         self.layout.setContentsMargins(-1, -1, -1, -1)
 
-        self.right_panel = None
-        # Left panel: Crossword and current clue
-        left_panel = QWidget()
-        self.left_layout = QVBoxLayout(left_panel)
-        self.left_layout.setSpacing(-1)
-        self.left_layout.setContentsMargins(-1, -1, -1, -1)
 
-        # Timer display above current clue
-        timer_row = QHBoxLayout()
-        timer_row.setAlignment(Qt.AlignVCenter)
-        timer_row.setContentsMargins(-1, -1, -1, -1)
-        timer_row.setSpacing(-1)
-        self.timer_label = QLabel("00:00")
-        self.timer_label.setFont(QFont("Arial", 12, QFont.Bold))
-        self.timer_label.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-        timer_row.addWidget(self.timer_label)
-
-        icon_size = QSize(24, 24)
-
-        self.pause_button = QPushButton()
-        pause_icon = self._create_colored_icon(
-            self.style().standardIcon(QStyle.SP_MediaPause), QColor(Qt.white), icon_size
-        )
-        self.pause_button.setIcon(pause_icon)
-        self.pause_button.setFixedSize(36, 36)
-        self.pause_button.setToolTip("Pause timer")
-        self.pause_button.setEnabled(False)
-        self.pause_button.setVisible(False)
-        self.pause_button.clicked.connect(self.pause_puzzle_timer)
-        self._style_icon_button(self.pause_button)
-        timer_row.addWidget(self.pause_button)
-
-        self.resume_button = QPushButton()
-        resume_icon = self._create_colored_icon(
-            self.style().standardIcon(QStyle.SP_MediaPlay), QColor(Qt.white), icon_size
-        )
-        self.resume_button.setIcon(resume_icon)
-        self.resume_button.setFixedSize(36, 36)
-        self.resume_button.setToolTip("Resume timer")
-        self.resume_button.setEnabled(False)
-        self.resume_button.setVisible(False)
-        self.resume_button.clicked.connect(self.resume_puzzle_timer)
-        self._style_icon_button(self.resume_button)
-        timer_row.addWidget(self.resume_button)
-
-        self.pencil_button= QPushButton()
-        project_root = Path(__file__).resolve().parents[2]
-        pencil_icon_path = project_root / "assets" / "icons" / "mdi--pencil.svg"
-        pencil_icon = self._create_colored_icon(
-            QIcon(str(pencil_icon_path)), QColor(Qt.white), icon_size
-        )
-
-        self.pencil_button.setIcon(pencil_icon)
-        self.pencil_button.setFixedSize(36, 36)
-        self.pencil_button.setToolTip("Enable/disable pencil mode")
-        self.pencil_button.setEnabled(False)
-        self.pencil_button.setVisible(False)
-        self.pencil_button.clicked.connect(self.set_pencil_mode)
-        self._style_icon_button(self.pencil_button)
-        timer_row.addWidget(self.pencil_button)
-
-        self.cells_filled = QLabel()
-        self.cells_filled.setToolTip("Ratio of cells filled")
-        self.cells_filled.setVisible(False)
-        timer_row.addWidget(self.cells_filled)
-
-        timer_row.addStretch()
-        self.left_layout.addLayout(timer_row)
-
-
-        # Right panel: puzzle info, clues, and actions
-        self.layout.addWidget(left_panel)
-        #self.layout.setStretch(0, 3)
+        self.calendar = Calendar()
+        self.layout.addWidget(self.calendar)
 
         self.main_tabs.addTab(puzzle_page, "Puzzle")
         self.main_tabs.setTabToolTip(0, "Crossword")
 
         self.ai_page = ai_window()
 
-        self.check_and_reveal = None
-
         self.main_tabs.addTab(self.ai_page, "AI")
         self.main_tabs.setTabToolTip(1, "AI")
+
+        self.check_and_reveal = None
 
 
     def on_cell_count_changed(self, count):
@@ -309,139 +244,19 @@ class MainWindow(QMainWindow):
         self.current_puzzle_path = None
 
         try:
-            self.current_puzzle = self.file_loader_service.load_ipuz_file(normalized_path)
-            self.current_puzzle_path = normalized_path
-            
-            if not self.current_clue_widget:
-                self.current_clue_widget = Current_Clue_Widget()
-                self.left_layout.addWidget(self.current_clue_widget)
-
-            if not self.crossword_widget:
-                self.crossword_widget = KrossWordWidget()
-
-                # Crossword grid
-                self.crossword_widget.cell_selected.connect(self.on_cell_selected)
-                self.crossword_widget.value_changed.connect(self.raise_updated_signal)
-                self.crossword_widget.display_message.connect(self.display_message)
-                self.crossword_widget.cell_count_changed.connect(self.on_cell_count_changed)
-                self.crossword_widget.request_clue_explanation.connect(self.ai_page.explain_clue)
-                self.crossword_widget.resize_current_clue.connect(self.current_clue_widget.resize)
-
-                self.crossword_widget.pencil_mode_toggle_requested.connect(self.set_pencil_mode)
-                self.crossword_widget.setFocusPolicy(Qt.StrongFocus)  # Make sure it can receive key events
-                self.left_layout.addWidget(self.crossword_widget)
-                self.left_layout.setStretchFactor(self.crossword_widget, 1)
-
-            self.crossword_widget.set_puzzle(self.current_puzzle)
-
-            self.check_and_reveal = Check_and_Reveal(self.crossword_widget, self.current_puzzle)
-            
-            self.check_letter_action.triggered.connect(self.check_and_reveal.check_current_letter) 
-            self.check_letter_action.setEnabled(True)
-
-            self.check_word_action.triggered.connect(self.check_and_reveal.check_current_word)
-            self.check_word_action.setEnabled(True)
-
-            self.check_puzzle_action.triggered.connect(self.check_and_reveal.check_answers)
-            self.check_puzzle_action.setEnabled(True)
-
-            self.reveal_letter_action.triggered.connect(self.check_and_reveal.reveal_current_letter)
-            self.reveal_letter_action.setEnabled(True)
-
-            self.reveal_word_action.triggered.connect(self.check_and_reveal.reveal_current_word)
-            self.reveal_word_action.setEnabled(True)
-
-            self.reveal_puzzle_action.triggered.connect(self.check_and_reveal.reveal_answers)
-            self.reveal_puzzle_action.setEnabled(True)
-
-            if self.right_panel is not None:
-                self.layout.removeWidget(self.right_panel)
-                self.right_panel.setParent(None)
-                self.right_panel.deleteLater()
-
-            self.right_panel = QWidget()
-            right_layout = QVBoxLayout()
-            right_layout.setSpacing(-1)
-            right_layout.setContentsMargins(-1, -1, -1, -1)
-            self.right_panel.setLayout(right_layout)
-            
-            self.title_layout = QHBoxLayout()
-            right_layout.addLayout(self.title_layout)
-
-            self.title_label = QLabel("No puzzle loaded")
-            self.title_label.setFont(QFont("Arial", 16, QFont.Bold))
-            self.title_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
-
-
-            self.date_label = QLabel("")
-            self.date_label.setFont(QFont("Arial", 11))
-            self.date_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
-            self.date_label.setStyleSheet("color: grey;")
-
-            self.title_layout.addWidget(self.title_label)
-            self.title_layout.addSpacing(5)
-            self.title_layout.addWidget(self.date_label)
-            self.title_layout.setAlignment(self.date_label, Qt.AlignBottom)
-
-            self.title_layout.addStretch()
-
-            info_layout = QHBoxLayout()
-            right_layout.addLayout(info_layout)
-            self.author_label = QLabel("")
-            self.author_label.setFont(QFont("Arial", 11))
-            self.author_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
-
-            self.editor_label = QLabel("")
-            self.editor_label.setFont(QFont("Arial", 11))
-            self.editor_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
-
-            info_layout.setSpacing(0)
-            #info_layout.setAlignment(Qt.AlignLeft)
-            info_layout.addWidget(self.author_label)
-            info_layout.addSpacing(5)
-            circle = QLabel("\N{BLACK CIRCLE}")
-            circle.setFont(QFont(circle.font().family(), 5))
-            info_layout.addWidget(circle)
-            info_layout.addSpacing(5)
-
-            info_layout.addWidget(self.editor_label)
-            info_layout.addStretch()
-            right_layout.addSpacing(10)
-
-            self.clues_panel = CluesPanel(self.crossword_widget.puzzle.across_clues, self.crossword_widget.puzzle.down_clues, self.right_panel)
-            self.clues_panel.clue_selected.connect(self.on_clue_selected)
-
-            right_layout.addWidget(self.clues_panel)
-            right_layout.setStretchFactor(self.clues_panel, 1)
-
-            self.check_and_reveal.grey_all_clues.connect(self.clues_panel.grey_all_clues)
-
-            right_layout.addStretch()
-            self.layout.addWidget(self.right_panel)
-           
-            self.pencil_button.setVisible(True)
-            self.pencil_button.setEnabled(True)
-
-            self.crossword_widget.cells_filled = self.current_puzzle.initial_filled_cells
-
-            self.cells_filled.setText(f"{self.crossword_widget.cells_filled}/{self.current_puzzle.fillable_cell_count}")
-            self.cells_filled.setVisible(True)
-
-            #self.layout.setStretch(1, 2)
-            self.update_title_label()
-            self.start_puzzle_timer()
-
-            self._update_current_clue_display(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
-            self._update_clues_highlight(self.crossword_widget.selected_row, self.crossword_widget.selected_col)
-
-            self.crossword_widget.greyout_clue.connect(self.clues_panel.greyout_text)
-
+            if self.calendar:
+                self.layout.removeWidget(self.calendar)
+                self.calendar.setParent(None)
+                self.calendar.deleteLater()
+                self.calendar = None
+            timer_row(self)
+            load_puzzle(self, normalized_path)
             return True
-
 
         except Exception as e:
             if show_error_dialog:
-                QMessageBox.warning(self, "Error", f"Failed to load puzzle:\n{e}")
+                QMessageBox.warning(self, "Error",
+                    f"Failed to load puzzle:\n{e}\n\n{traceback.format_exc()}")
             else:
                 print(f"Failed to load puzzle from {normalized_path}: {e}")
             self.current_puzzle_path = None
@@ -637,30 +452,13 @@ class MainWindow(QMainWindow):
         if not self.current_puzzle:
             return
 
-        print(f"Updating clue display for ({row}, {col})")
-        print(f"Current highlight mode: {self.crossword_widget.highlight_mode}")
-
-        cell = self.current_puzzle.cells[row][col]
-        direction = ""
-
         # Get direction from current highlight mode
         if self.crossword_widget.highlight_mode == "across":
             direction = "across"
         elif self.crossword_widget.highlight_mode == "down":
             direction = "down"
 
-        print(f"Direction: {direction}")
-        print(f"Cell clue number: {cell.clue_number}")
-
         # Find the clue for this cell in the current direction
         clue = self.crossword_widget.find_clue_for_cell(row, col, direction)
 
-        if clue:
-            clue_text = f"{direction.upper()}: {clue.text}"
-            print(f"Found clue: {clue_text}")
-        else:
-            clue_text = ""
-            print("No clue found for this cell")
-
-        #self.current_clue_label.setText(f"<b>{clue.number}{'A' if clue.direction == 'across' else 'D'}</b> {clue.text}")
         self.current_clue_widget.set_clue(clue)

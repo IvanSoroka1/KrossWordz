@@ -36,8 +36,6 @@ class CluesTextEdit(SelectableLabel):
         self.styelsheet["grey"] = ""
 
 
-
-
     def setText(self, text):
         """Set clue text and resize the label to tightly wrap the content."""
         super().setText(text)
@@ -111,7 +109,8 @@ class CluesPanel(QWidget):
         self.layout.setSpacing(10)
         self.setLayout(self.layout)
         self.clues = dict()
-        #self.clue_sides = dict()
+        self.clue_texts = dict()
+
         self._scroll_areas = dict()
         self._highlighted_key = None
         self._side_highlighted_key = None
@@ -161,10 +160,6 @@ class CluesPanel(QWidget):
             clue_layout.setContentsMargins(0, 0, 0, 0)
             clue_layout.setSpacing(0)
 
-            #sideBox = QWidget()
-            #sideBox.setFixedWidth(8)
-            #sideBox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-
             clue_number = QLabel(str(clue.number), scroll_content)
             clue_number.setAlignment(Qt.AlignRight)
             clue_number.setFixedWidth(20)
@@ -176,7 +171,6 @@ class CluesPanel(QWidget):
             text_edit.selectClue.connect(self._handle_clue_click)
             text_edit.setText(clue.text.strip())
 
-            #clue_layout.addWidget(sideBox)  
             clue_layout.addSpacing(12)
             clue_layout.addWidget(clue_number)
             clue_layout.addSpacing(12)
@@ -187,7 +181,7 @@ class CluesPanel(QWidget):
             self.scroll_layout.addWidget(clue_widget)
 
             self.clues[(clue.number, clue.direction)] = clue_widget
-            #self.clue_sides[(clue.number, clue.direction)] = sideBox
+            self.clue_texts[(clue.number, clue.direction)] = text_edit
 
             last_text_edit = text_edit
 
@@ -196,11 +190,12 @@ class CluesPanel(QWidget):
 
     def greyout_text(self, number: int, direction: str, make_grey: bool) -> None:
         key=(number, direction)
-        text_edit = self.clues.get(key)
+        text_edit = self.clue_texts.get(key)
         if text_edit:
             text_edit.set_grey_text(make_grey)
+
     def grey_all_clues(self) -> None:
-        for text_edit in self.clues.values():
+        for text_edit in self.clue_texts.values():
             text_edit.set_grey_text(True)
 
     def highlight_clue(self, number: int, direction: str) -> None:

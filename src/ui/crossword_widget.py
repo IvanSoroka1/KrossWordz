@@ -40,10 +40,23 @@ class KrossWordWidget(QWidget):
         self.setMinimumSize(200, 200)
         print("DEBUG: KrossWordWidget initialized")
         self.setFocusPolicy(Qt.StrongFocus)
+    
+
+
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    def select_first_square(self):
+        for j in range(self.puzzle.height): # it would be unusual for a puzzle to have the first row be all black
+            for i in range(self.puzzle.width):        
+                if not self.puzzle.cells[j][i].is_black:
+                    self.selected_row = j
+                    self.selected_col = i
+                    return 
+
+        raise Exception("Puzzle has no non-black cells")
+
     def get_grid_width(self):
         if not self.puzzle:
             return None
@@ -79,13 +92,6 @@ class KrossWordWidget(QWidget):
             if start_cell.clue_number:
                 return self.puzzle.get_clue(start_cell.clue_number, direction)
 
-        # Fallback: try to get clue directly from cell number
-        if self.cells[row][col].clue_number:
-            return self.puzzle.get_clue(
-                self.cells[row][col].clue_number,
-                direction
-            )
-
         return None
 
     def find_word_start(self, row, col, direction):
@@ -115,6 +121,7 @@ class KrossWordWidget(QWidget):
         self.selected_col = 0
         self.puzzle = puzzle
         self._recompute_cell_metrics()
+        self.select_first_square()
         self.update()
 
     def resizeEvent(self, event):  # noqa: N802
