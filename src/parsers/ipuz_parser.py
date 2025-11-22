@@ -28,6 +28,8 @@ class IPUZParser:
         # Extract metadata
         title = data.get('title', 'Untitled Crossword')
         author = data.get('author', '')
+        editor = data.get('editor', '')
+        date = data.get('date', '')
         notes = data.get('notes', '')
         difficulty = data.get('difficulty', '')
         category = data.get('category', '')
@@ -47,7 +49,9 @@ class IPUZParser:
             difficulty=difficulty,
             category=category,
             width=width,
-            height=height
+            height=height,
+            editor=editor,
+            date=date
         )
 
         # Initialize empty grid

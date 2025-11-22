@@ -15,9 +15,7 @@ from ui.main_window import MainWindow
 
 class CrossWordzApplication(QApplication):
     """Custom QApplication that forwards macOS FileOpen events."""
-
     file_requested = Signal(str)
-
     def event(self, event):  # noqa: D401 - Qt override
         if event.type() == QEvent.FileOpen:
             file_path = event.file()

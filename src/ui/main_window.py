@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-
+from datetime import datetime
 from ui.message_dialog import show_message
 from ui.ai_windows import ai_window
 from ui.check_and_reveal import Check_and_Reveal
@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
         self.current_clue_widget = None
         self.crossword_widget = None
         self.shown = False
+        self.date_label = None
 
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -363,17 +364,48 @@ class MainWindow(QMainWindow):
             right_layout.setSpacing(-1)
             right_layout.setContentsMargins(-1, -1, -1, -1)
             self.right_panel.setLayout(right_layout)
+            
+            self.title_layout = QHBoxLayout()
+            right_layout.addLayout(self.title_layout)
 
             self.title_label = QLabel("No puzzle loaded")
             self.title_label.setFont(QFont("Arial", 16, QFont.Bold))
-            self.title_label.setWordWrap(True)
-            right_layout.addWidget(self.title_label)
+            self.title_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
 
+
+            self.date_label = QLabel("")
+            self.date_label.setFont(QFont("Arial", 11))
+            self.date_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
+            self.date_label.setStyleSheet("color: grey;")
+
+            self.title_layout.addWidget(self.title_label)
+            self.title_layout.addSpacing(5)
+            self.title_layout.addWidget(self.date_label)
+            self.title_layout.setAlignment(self.date_label, Qt.AlignBottom)
+
+            self.title_layout.addStretch()
+
+            info_layout = QHBoxLayout()
+            right_layout.addLayout(info_layout)
             self.author_label = QLabel("")
             self.author_label.setFont(QFont("Arial", 11))
-            self.author_label.setWordWrap(True)
-            right_layout.addWidget(self.author_label)
+            self.author_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
 
+            self.editor_label = QLabel("")
+            self.editor_label.setFont(QFont("Arial", 11))
+            self.editor_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
+
+            info_layout.setSpacing(0)
+            #info_layout.setAlignment(Qt.AlignLeft)
+            info_layout.addWidget(self.author_label)
+            info_layout.addSpacing(5)
+            circle = QLabel("\N{BLACK CIRCLE}")
+            circle.setFont(QFont(circle.font().family(), 5))
+            info_layout.addWidget(circle)
+            info_layout.addSpacing(5)
+
+            info_layout.addWidget(self.editor_label)
+            info_layout.addStretch()
             right_layout.addSpacing(10)
 
             self.clues_panel = CluesPanel(self.crossword_widget.puzzle.across_clues, self.crossword_widget.puzzle.down_clues, self.right_panel)
@@ -542,8 +574,16 @@ class MainWindow(QMainWindow):
             return
 
         self.title_label.setText(self.current_puzzle.title)
-        author_text = f"by {self.current_puzzle.author}" if self.current_puzzle.author else ""
+        if self.current_puzzle.date:
+            d = datetime.strptime(self.current_puzzle.date, "%m/%d/%Y")
+            formatted = d.strftime("%A, %B %d, %Y")
+            self.date_label.setText(formatted)
+
+
+        author_text = f"By {self.current_puzzle.author}" if self.current_puzzle.author else ""
         self.author_label.setText(author_text)
+        self.editor_label.setText(f"Edited by {self.current_puzzle.editor}" if self.current_puzzle.editor else "")
+
 
     def on_cell_selected(self, row, col):
         """Handle cell selection events"""

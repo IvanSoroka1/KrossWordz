@@ -45,6 +45,8 @@ class KrossWordPuzzle:
     """Main crossword puzzle data structure based on .ipuz format"""
     title: str = ""
     author: str = ""
+    editor: str = ""
+    date: str = ""
     width: int = 0
     height: int = 0
     cells: List[List[KrossWordCell]] = field(default_factory=lambda: [[]])
