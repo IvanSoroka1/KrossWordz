@@ -154,6 +154,8 @@ class MainWindow(QMainWindow):
 
 
         self.calendar = Calendar()
+        self.calendar.loadPuzzle.connect(self.load_puzzle_from_path)
+
         self.layout.addWidget(self.calendar)
 
         self.main_tabs.addTab(puzzle_page, "Puzzle")

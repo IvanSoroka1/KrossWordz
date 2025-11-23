@@ -3,11 +3,12 @@ import calendar
 import datetime
 from PySide6.QtWidgets import QLayout, QLabel, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSettings, Signal
 
 from pathlib import Path
 
 class Calendar(QWidget):
+    loadPuzzle = Signal(str)
     def __init__(self):
         super().__init__()
         today = datetime.date.today()
@@ -27,6 +28,7 @@ class Calendar(QWidget):
             weekday = (date.weekday()+1)%7
             if date.month == month:# skip leading/trailing days from adjacent months
                 dateBox = DateBox(month, date.day, year)
+                dateBox.loadPuzzle.connect(self.loadPuzzle)
                 calendar_layout.addWidget(dateBox, counts[weekday], weekday)
                 counts[weekday] += 1
             else:
@@ -39,6 +41,7 @@ class Calendar(QWidget):
 
 
 class DateBox(QWidget):
+    loadPuzzle =  Signal(str)
     def __init__(self, month, day, year):
         super().__init__()
         layout = QVBoxLayout()
@@ -53,6 +56,18 @@ class DateBox(QWidget):
         layout.addWidget(self.date, alignment=Qt.AlignHCenter)
 
         self.setLayout(layout)
+
+        settings = QSettings("KrossWordz", "KrossWordz")
+        self.directory = settings.value("puzzles_dir")
+        # how do you account for months with two digits or one? E.g what if you used 09 instead of 9 for september. (same thing for dates)
+        self.file_name = "{month}:{day}:{year}".format(month=month, day=day, year=year) 
+
+
+    
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.loadPuzzle.emit(f"{self.directory}/{self.file_name}.ipuz")
+        return super().mousePressEvent(event)
 
 
 
