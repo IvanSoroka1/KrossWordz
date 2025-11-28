@@ -7,6 +7,7 @@ import google.generativeai as genai
 
 
 
+
 class ai_window(QWidget):
     def __init__(self):
         super().__init__()

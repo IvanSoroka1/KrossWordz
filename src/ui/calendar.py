@@ -3,7 +3,7 @@ import calendar
 import datetime
 from PySide6.QtWidgets import QLayout, QLabel, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QGraphicsColorizeEffect
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import Qt, QSettings, Signal
+from PySide6.QtCore import Qt, QSettings, Signal, QFileSystemWatcher
 from PySide6.QtGui import QColor
 
 from pathlib import Path
@@ -38,7 +38,14 @@ class Calendar(QWidget):
         self.setLayout(self.mainlayout)
 
         monthCombo.currentTextChanged.connect(lambda text: self.dateChanged( text, self.year))
-        yearCombo.currentTextChanged.connect(lambda text: self.dateChanged( self.month, text))
+        yearCombo.currentTextChanged.connect(lambda text: self.dateChanged(calendar.month_name[self.month], text))
+
+
+        self.watcher = QFileSystemWatcher(self)
+        settings = QSettings("KrossWordz", "KrossWordz")
+        self.watcher.addPath(settings.value("puzzles_dir"))
+
+        self.watcher.directoryChanged.connect(lambda path: self.dateChanged(calendar.month_name[self.month], self.year))
     
     def dateChanged(self, month, year):
         self.mainlayout.removeItem(self.calendarLayout)
@@ -62,8 +69,10 @@ class Calendar(QWidget):
             counts[i] = 1
 
         cal = calendar.Calendar(firstweekday=6)  
+
         for i, weekday in enumerate(['S', 'M', 'T', 'W', 'T', 'F', 'S']):
             calendar_layout.addWidget(QLabel(weekday), 0, i, alignment=Qt.AlignHCenter)
+
         for date in cal.itermonthdates(self.year, self.month):
             weekday = (date.weekday()+1)%7
             if date.month == self.month:# skip leading/trailing days from adjacent months
