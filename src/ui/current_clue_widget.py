@@ -10,6 +10,7 @@ class Current_Clue_Widget(QWidget):
         shared_bg = "#47c8ff"
 
         # self.container widget paints the background; spacing inherits its color.
+
         self.container = QWidget(self)
         self.container.setAutoFillBackground(True)
         self.container.setStyleSheet(f"background-color: {shared_bg};")
@@ -22,14 +23,16 @@ class Current_Clue_Widget(QWidget):
         self.current_clue_label.setWordWrap(True)
         self.current_clue_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.current_clue_label.setMinimumHeight(50)
-        self.current_clue_label.setStyleSheet("background-color: transparent;")
+
+        # this is necessary to set so that the color of the menu on right click is also the same color
+        self.current_clue_label.setStyleSheet(f"background-color: {shared_bg};")
 
         self.number_label = QLabel()
         self.number_label.setFixedWidth(20)
         font = QFont("Arial", 12)
         font.setBold(True)
         self.number_label.setFont(font)
-        self.number_label.setStyleSheet("background-color: transparent;")
+        self.number_label.setStyleSheet(f"background-color: transparent;")
 
         row_layout = QHBoxLayout(self.container)
         row_layout.setContentsMargins(0, 0, 0, 0)
