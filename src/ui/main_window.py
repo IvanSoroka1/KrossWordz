@@ -292,6 +292,35 @@ class MainWindow(QMainWindow):
 
             with open(self.current_puzzle_path, "w", encoding="utf-8") as f:
                 json.dump(puzzle_data, f, indent=2)
+            
+            puzzle_metadata = dict()
+            puzzle_metadata["revealed_coordinates"] = []
+            puzzle_metadata["corrected_coordinates"] = []
+            puzzle_metadata["incorrect_coordinates"] = []
+            puzzle_metadata["pencilled_coordinates"] = []
+
+            for row in range( self.current_puzzle.height ):
+                for col in range( self.current_puzzle.width ):
+                    cell = self.current_puzzle.cells[row][col]
+                    if cell.revealed:
+                        puzzle_metadata["revealed_coordinates"].append((row, col))
+                    if cell.corrected:
+                        puzzle_metadata["corrected_coordinates"].append((row, col))
+                    if cell.incorrect:
+                        puzzle_metadata["incorrect_coordinates"].append((row, col))
+                    if cell.pencilled:
+                        puzzle_metadata["pencilled_coordinates"].append((row, col))
+
+            puzzle_metadata["highlight_mode"] = self.crossword_widget.highlight_mode
+            puzzle_metadata["timer_running"] = self.timer_running
+            puzzle_metadata["current_timer"] = self.timer_label.text()
+            puzzle_metadata["current_position"] = self.crossword_widget.selected_row, self.crossword_widget.selected_col
+            puzzle_metadata["puzzle_solved"] = self.crossword_widget.puzzle_solved
+
+            with open(self.current_puzzle_path.replace(".ipuz", ".json"), "w", encoding="utf-8") as f:
+                json.dump(puzzle_metadata, f, indent=2)
+
+
 
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")

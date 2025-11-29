@@ -40,7 +40,6 @@ class Calendar(QWidget):
         monthCombo.currentTextChanged.connect(lambda text: self.dateChanged( text, self.year))
         yearCombo.currentTextChanged.connect(lambda text: self.dateChanged(calendar.month_name[self.month], text))
 
-
         self.watcher = QFileSystemWatcher(self)
         settings = QSettings("KrossWordz", "KrossWordz")
         self.watcher.addPath(settings.value("puzzles_dir"))

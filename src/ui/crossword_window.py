@@ -1,4 +1,5 @@
 
+import json
 from pathlib import Path
 from ui.check_and_reveal import Check_and_Reveal
 from ui.SelectableLabel import SelectableLabel
@@ -209,9 +210,39 @@ def load_puzzle(window, normalized_path: str):
     window.cells_filled.setVisible(True)
 
     window.update_title_label()
+
     window.start_puzzle_timer()
+
+    progress = Path(normalized_path).with_suffix(".json")
+    if progress.exists():
+        load_previous_progress(window, window.crossword_widget, progress)
 
     window._update_current_clue_display(window.crossword_widget.selected_row, window.crossword_widget.selected_col)
     window._update_clues_highlight(window.crossword_widget.selected_row, window.crossword_widget.selected_col)
 
     window.crossword_widget.greyout_clue.connect(window.clues_panel.greyout_text)
+
+
+
+
+def load_previous_progress(window, crossword_widget, normalized_path):
+    with open(normalized_path, "r") as f:
+        progress = json.load(f)
+        crossword_widget.selected_row, crossword_widget.selected_col = progress["current_position"]
+        crossword_widget.highlight_mode = progress["highlight_mode"]
+        crossword_widget.puzzle_solved = progress["puzzle_solved"]
+
+        window.timer_label.setText(progress["current_timer"])
+        window.elapsed_seconds = int(progress["current_timer"].split(":")[0]) * 60 + int(progress["current_timer"].split(":")[1])
+        
+        if not progress["timer_running"]:
+            window.stop_puzzle_timer()
+
+        for revealed_squares in progress["revealed_coordinates"]:
+            crossword_widget.puzzle.cells[revealed_squares[0]][revealed_squares[1]].revealed = True
+        for corrected_squares in progress["corrected_coordinates"]:
+            crossword_widget.puzzle.cells[corrected_squares[0]][corrected_squares[1]].corrected = True
+        for incorrect_squares in progress["incorrect_coordinates"]:
+            crossword_widget.puzzle.cells[incorrect_squares[0]][incorrect_squares[1]].incorrect = True
+        for pencilled_squares in progress["pencilled_coordinates"]:
+            crossword_widget.puzzle.cells[pencilled_squares[0]][pencilled_squares[1]].pencilled = True
