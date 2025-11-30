@@ -328,7 +328,7 @@ class MainWindow(QMainWindow):
             puzzle_metadata["pencil_mode"] = self.crossword_widget.pencil_mode
             
             # this is already computed when you start it up, but now this can be accessed by the calendar.
-            puzzle_metadata["percent_accomplished"] = f"{(self.crossword_widget.cells_filled/self.crossword_widget.puzzle.fillable_cell_count)*100:.2f}%"
+            puzzle_metadata["percent_accomplished"] = (self.crossword_widget.cells_filled/self.crossword_widget.puzzle.fillable_cell_count)
 
             with open(self.current_puzzle_path.replace(".ipuz", ".json"), "w", encoding="utf-8") as f:
                 json.dump(puzzle_metadata, f, indent=2)
@@ -336,10 +336,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")
     
     def autosave(self):
-        if not self.crossword_widget.dirty:
-            return
-        self.save_progress()
-        self.crossword_widget.dirty = False
+        if self.crossword_widget:
+            if not self.crossword_widget.dirty:
+                return
+            self.save_progress()
+            self.crossword_widget.dirty = False
 
     def on_clue_selected(self, number, direction):
         if not self.crossword_widget.puzzle:
@@ -513,5 +514,6 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         # don't check if it's dirty so that you get the exact time of the timer
-        self.save_progress()
-        super().closeEvent(event)
+        if self.crossword_widget:
+            self.save_progress()
+            super().closeEvent(event)

@@ -62,9 +62,12 @@ class Calendar(QWidget):
         self.mainlayout.addLayout(self.calendarLayout)
 
     def getCalendarLayout(self):
+
         calendar_layout = QGridLayout()
+        calendar_layout.setVerticalSpacing(0)
         calendar_layout.setSizeConstraint(QLayout.SetFixedSize)
         counts = dict()
+
         for i in range(7):
             counts[i] = 1
 
@@ -82,7 +85,7 @@ class Calendar(QWidget):
                 counts[weekday] += 1
             else:
                  counts[weekday] += 1
-        
+
         return calendar_layout
 
 
@@ -99,6 +102,7 @@ class DateBox(QWidget):
         settings = QSettings("KrossWordz", "KrossWordz")
         self.directory = settings.value("puzzles_dir")
 
+        # how do you account for months with two digits or one? E.g what if you used 09 instead of 9 for september. (same thing for dates)
         self.file = f"{self.directory}/{month}:{day}:{year}.ipuz".format(month=month, day=day, year=year) 
 
         self.image = QSvgWidget(str(crossword_icon_path))
@@ -116,18 +120,37 @@ class DateBox(QWidget):
             self.image.setCursor(Qt.CursorShape.PointingHandCursor)
             self.clickable = True
     
-
         self.date = QLabel(str(day))
+        self.date.setStyleSheet("font-weight: bold")
         layout.addWidget(self.image, alignment= Qt.AlignHCenter)
         layout.addWidget(self.date, alignment=Qt.AlignHCenter)
         progressFile = Path(self.file).with_suffix(".json")
+
+        percent_label = QLabel(alignment=Qt.AlignHCenter)
+        time_label = QLabel(alignment=Qt.AlignHCenter)
+        time_label.setStyleSheet(f"font-size: 8pt;")
+        time_label.setContentsMargins(0, 0, 0, 0)
+        percent_label.setStyleSheet(f"font-size: 8pt;")
+        percent_label.setContentsMargins(0, 0, 0, 0)
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(0)
+
         if progressFile.exists():
             with open(progressFile, "r") as f:
                 progress = json.load(f)
-                layout.addWidget(QLabel(progress["percent_accomplished"], alignment=Qt.AlignHCenter))
+                time_label.setText(progress["current_timer"])
+                percent_label.setText(f"{progress["percent_accomplished"]: .2f} %")
+                solved = progress["puzzle_solved"]
+                color = "" if not solved else "color: green;"
+                percent_label.setStyleSheet(f"font-size: 8pt;{color}")
+
+        info_layout.addWidget(percent_label)
+        info_layout.addWidget(time_label)
+
+        layout.addLayout(info_layout)
+
 
         self.setLayout(layout)
-        # how do you account for months with two digits or one? E.g what if you used 09 instead of 9 for september. (same thing for dates)
     
     
     def mousePressEvent(self, event):
