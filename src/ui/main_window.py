@@ -3,6 +3,7 @@ import traceback
 import json
 from pathlib import Path
 from datetime import datetime
+from ui.stats_tab import stats_tab
 from ui.message_dialog import show_message
 from ui.ai_windows import ai_window
 from ui.check_and_reveal import Check_and_Reveal
@@ -172,6 +173,11 @@ class MainWindow(QMainWindow):
 
         self.main_tabs.addTab(self.ai_page, "AI")
         self.main_tabs.setTabToolTip(1, "AI")
+
+        self.stats = stats_tab()
+
+        self.main_tabs.addTab(self.stats, "Stats")
+        self.main_tabs.setTabToolTip(1, "See your puzzle stats")
 
         self.check_and_reveal = None
 
