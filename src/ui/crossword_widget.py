@@ -40,9 +40,8 @@ class KrossWordWidget(QWidget):
         self.setMinimumSize(200, 200)
         print("DEBUG: KrossWordWidget initialized")
         self.setFocusPolicy(Qt.StrongFocus)
+        self.dirty = False
     
-
-
 
     # ------------------------------------------------------------------
     # Public API
@@ -81,6 +80,7 @@ class KrossWordWidget(QWidget):
 
     def focusNextPrevChild(self, next: bool) -> bool:
         return False  # stop Qt from moving focus on Tab/Shift+Tab
+
     def find_clue_for_cell(self, row, col, direction):
         """Find the clue for a cell even if it doesn't have a number"""
         # Always find the start of the word this cell belongs to
@@ -91,7 +91,6 @@ class KrossWordWidget(QWidget):
             start_cell = self.puzzle.cells[start_row][start_col]
             if start_cell.clue_number:
                 return self.puzzle.get_clue(start_cell.clue_number, direction)
-
         return None
 
     def find_word_start(self, row, col, direction):
@@ -149,8 +148,6 @@ class KrossWordWidget(QWidget):
         self.resize_current_clue.emit(self.cell_size*self.puzzle.width)
 
 
-
-
     def get_current_cell(self) -> Optional[KrossWordCell]:
         if self.puzzle and 0 <= self.selected_row < self.puzzle.height:
             if 0 <= self.selected_col < self.puzzle.width:
@@ -183,9 +180,6 @@ class KrossWordWidget(QWidget):
                 cells.append((row, col))
         return cells
 
-    def handle_global_navigation(self, key: int) -> None:
-        mods = QApplication.keyboardModifiers()
-        self._handle_navigation(key, (mods & Qt.ShiftModifier) == Qt.ShiftModifier)
 
     # ------------------------------------------------------------------
     # Qt event handlers
@@ -194,20 +188,16 @@ class KrossWordWidget(QWidget):
     def paintEvent(self, event):  # noqa: N802 (Qt override)
         if not self.puzzle:
             return
-
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-
         self._draw_cells(painter)
         self._draw_grid(painter)
 
     def mousePressEvent(self, event):  # noqa: N802
         if not self.puzzle or event.button() == Qt.MouseButton.RightButton:
             return
-
         col = int(round(event.position().x() // self.cell_size))
         row = int(round(event.position().y() // self.cell_size))
-
         if 0 <= row < self.puzzle.height and 0 <= col < self.puzzle.width:
             if not self.puzzle.cells[row][col].is_black:
                 if row == self.selected_row and col == self.selected_col:
@@ -215,27 +205,26 @@ class KrossWordWidget(QWidget):
                 else:
                     self.selected_row = row
                     self.selected_col = col
-
                 self.setFocus()
                 self.cell_selected.emit(row, col)
                 self.update()
+                self.dirty = True
 
     def event(self, event):  # noqa: N802
         if event.type() == event.Type.KeyPress:
             if event.key() in (Qt.Key_Tab, Qt.Key_Backtab):
                 mods = QApplication.keyboardModifiers()
-                print("DEBUG: Tab key caught in event() method")
                 self._handle_navigation(event.key(), mods & Qt.ShiftModifier)
+                self.dirty = True
                 return True
         return super().event(event)
 
     def keyPressEvent(self, event):  # noqa: N802
         if not self.puzzle:
             return
-
         key = event.key()
         mods = event.modifiers()
-
+        puzzle_modified = True
         if key == Qt.Key_Left:
             if self.highlight_mode == "down":
                 self.highlight_mode = "across"
@@ -270,11 +259,6 @@ class KrossWordWidget(QWidget):
         elif Qt.Key_0 <= key <= Qt.Key_Z:
             self._handle_letter_input(key, mods)
         elif key in (Qt.Key_Backspace, Qt.Key_Delete):
-            print(
-                "Backspace/Delete pressed. Current cell: "
-                f"({self.selected_row}, {self.selected_col}), current content: "
-                f"'{self.puzzle.cells[self.selected_row][self.selected_col].user_input}'"
-            )
             self._handle_delete(key)
         elif key == Qt.Key_Return:
             print(f"DEBUG: Return key detected: {key}")
@@ -282,8 +266,11 @@ class KrossWordWidget(QWidget):
         elif key == Qt.Key_Space:
             self._toggle_highlight_mode()
         else:
+            puzzle_modified = False
             super().keyPressEvent(event)
 
+        if puzzle_modified:
+            self.dirty = True
 
 
     # ------------------------------------------------------------------
@@ -1003,6 +990,7 @@ class KrossWordWidget(QWidget):
 
     def set_pencil_mode(self):
         self.pencil_mode = not self.pencil_mode
+        self.dirty = True
         return self.pencil_mode
 
     def _find_word_start_in_widget(self, row: int, col: int, direction: str):

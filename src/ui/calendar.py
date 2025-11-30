@@ -1,6 +1,7 @@
 import calendar
 
 import datetime
+import json
 from PySide6.QtWidgets import QLayout, QLabel, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QGraphicsColorizeEffect
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import Qt, QSettings, Signal, QFileSystemWatcher
@@ -97,12 +98,14 @@ class DateBox(QWidget):
 
         settings = QSettings("KrossWordz", "KrossWordz")
         self.directory = settings.value("puzzles_dir")
-        self.file_name = "{month}:{day}:{year}.ipuz".format(month=month, day=day, year=year) 
+
+        self.file = f"{self.directory}/{month}:{day}:{year}.ipuz".format(month=month, day=day, year=year) 
 
         self.image = QSvgWidget(str(crossword_icon_path))
         self.image.setFixedSize(32, 32)   # pick a size you like
 
-        if not self.directory or self.file_name not in {p.name for p in Path(self.directory).iterdir() if p.is_file()}:
+        #if not self.directory or self.file_name not in {p.name for p in Path(self.directory).iterdir() if p.is_file()}:
+        if not Path(self.file).exists():
             effect = QGraphicsColorizeEffect(self.image)
             effect.setColor(QColor("gray"))   # tint color
             effect.setStrength(0.8)           # 0..1 intensity
@@ -117,6 +120,11 @@ class DateBox(QWidget):
         self.date = QLabel(str(day))
         layout.addWidget(self.image, alignment= Qt.AlignHCenter)
         layout.addWidget(self.date, alignment=Qt.AlignHCenter)
+        progressFile = Path(self.file).with_suffix(".json")
+        if progressFile.exists():
+            with open(progressFile, "r") as f:
+                progress = json.load(f)
+                layout.addWidget(QLabel(progress["percent_accomplished"], alignment=Qt.AlignHCenter))
 
         self.setLayout(layout)
         # how do you account for months with two digits or one? E.g what if you used 09 instead of 9 for september. (same thing for dates)
@@ -125,7 +133,7 @@ class DateBox(QWidget):
     def mousePressEvent(self, event):
         # Only treat clicks on the icon itself as a valid click
         if self.clickable and event.button() == Qt.LeftButton and self.image.geometry().contains(event.position().toPoint()):
-            self.loadPuzzle.emit(f"{self.directory}/{self.file_name}")
+            self.loadPuzzle.emit(self.file)
         return super().mousePressEvent(event)
 
 

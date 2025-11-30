@@ -16,11 +16,7 @@ class Check_and_Reveal(QObject):
         cell = self.crossword_widget.get_current_cell()
         if not cell or cell.is_black:
             return
-        if cell.user_input == '':
-            cell.reveal()
-            self.crossword_widget.fill_cell_signals(minus=False)
-        else:
-            cell.reveal()
+        self.reveal_cell(cell)
         self.crossword_widget.check_filled_puzzle()
         self.crossword_widget.update()
 
@@ -34,20 +30,14 @@ class Check_and_Reveal(QObject):
             cell = self.current_puzzle.cells[cell_row][cell_col]
             if cell.is_black:
                 continue
-
-            # if you call cell.reveal() here then cell.user_input will never be ''
-
-            if cell.user_input == '':
-                cell.reveal()
-                self.crossword_widget.fill_cell_signals(minus=False)
-            else:
-                cell.reveal()
-
+            self.reveal_cell(cell)
             self.crossword_widget.check_filled_puzzle()
         
         self.crossword_widget.update()
 
     def reveal_answers(self):
+        # if the puzzle is solved, then the user shouldn't be allowed to click this
+        self.dirty = True
         """Reveal current answers"""
         for row in self.current_puzzle.cells:
             for cell in row:
@@ -64,10 +54,7 @@ class Check_and_Reveal(QObject):
         cell = self.crossword_widget.get_current_cell()
         if not cell or cell.is_black or not cell.user_input:
             return
-        if cell.is_correct():
-            cell.corrected = True
-        else:
-            cell.incorrect = True
+        self.check_cell(cell)
         self.crossword_widget.update()
 
     def check_current_word(self):
@@ -85,10 +72,7 @@ class Check_and_Reveal(QObject):
                 continue
             if not cell.user_input:
                 continue
-            if cell.is_correct():
-                cell.corrected = True
-            else:
-                cell.incorrect = True
+            self.check_cell(cell)
 
         self.crossword_widget.update()
 
@@ -101,8 +85,26 @@ class Check_and_Reveal(QObject):
             for cell in row:
                 if not cell or cell.is_black or not cell.user_input:
                     continue
-                if cell.is_correct():
-                    cell.corrected = True
-                else:
-                    cell.incorrect = True
+                self.check_cell(cell)
         self.crossword_widget.update()
+
+    def check_cell(self, cell):
+        if cell.is_correct():
+            if not cell.corrected:
+                cell.corrected = True
+                self.crossword_widget.dirty = True
+        else:
+            if not cell.incorrect:
+                self.crossword_widget.dirty = True
+                cell.incorrect = True
+
+    def reveal_cell(self, cell):
+        # if you call cell.reveal() here then cell.user_input will never be ''
+        if cell.user_input == '':
+            cell.reveal()
+            self.crossword_widget.fill_cell_signals(minus=False)
+            self.crossword_widget.dirty = True
+        else:
+            if not cell.corrected:
+                self.crossword_widget.dirty = True
+                cell.reveal()

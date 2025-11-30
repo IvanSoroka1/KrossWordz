@@ -68,6 +68,13 @@ class MainWindow(QMainWindow):
         self.date_label = None
         self.right_panel = None
         self.left_panel = None
+
+
+        self.autosave_timer = QTimer(self)
+        self.autosave_timer.setInterval(5000)
+        self.autosave_timer.timeout.connect(self.autosave)
+        self.autosave_timer.start()
+
         self.init_ui()
 
     def create_menu_bar(self):
@@ -178,9 +185,7 @@ class MainWindow(QMainWindow):
 
     def display_message(self, correct: bool):
         if correct:
-            self.pause_puzzle_timer()
-            self.resume_button.setVisible(False)
-            self.pause_button.setVisible(False)
+            self.stop_puzzle_timer()
         if correct or not self.shown:
             show_message(self, correct)
 
@@ -311,19 +316,30 @@ class MainWindow(QMainWindow):
                     if cell.pencilled:
                         puzzle_metadata["pencilled_coordinates"].append((row, col))
 
+            # are these even worth saving? It might be better to just always load from the first square.
+            puzzle_metadata["current_position"] = self.crossword_widget.selected_row, self.crossword_widget.selected_col
             puzzle_metadata["highlight_mode"] = self.crossword_widget.highlight_mode
+
             puzzle_metadata["timer_running"] = self.timer_running
             puzzle_metadata["current_timer"] = self.timer_label.text()
-            puzzle_metadata["current_position"] = self.crossword_widget.selected_row, self.crossword_widget.selected_col
             puzzle_metadata["puzzle_solved"] = self.crossword_widget.puzzle_solved
+            
+            # this isn't implemented in the loader yet
+            puzzle_metadata["pencil_mode"] = self.crossword_widget.pencil_mode
+            
+            # this is already computed when you start it up, but now this can be accessed by the calendar.
+            puzzle_metadata["percent_accomplished"] = f"{(self.crossword_widget.cells_filled/self.crossword_widget.puzzle.fillable_cell_count)*100:.2f}%"
 
             with open(self.current_puzzle_path.replace(".ipuz", ".json"), "w", encoding="utf-8") as f:
                 json.dump(puzzle_metadata, f, indent=2)
-
-
-
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")
+    
+    def autosave(self):
+        if not self.crossword_widget.dirty:
+            return
+        self.save_progress()
+        self.crossword_widget.dirty = False
 
     def on_clue_selected(self, number, direction):
         if not self.crossword_widget.puzzle:
@@ -364,13 +380,15 @@ class MainWindow(QMainWindow):
         self.elapsed_seconds = 0
         self.timer_label.setText("00:00")
         self.puzzle_timer.start()
+        self.crossword_widget.dirty = True
         self.timer_running = True
         self.pause_button.setEnabled(True)
         self.pause_button.setVisible(True)
         self.resume_button.setEnabled(False)
         self.resume_button.setVisible(False)
+        self.crossword_widget.dirty = True
 
-    def stop_puzzle_timer(self, reset_display: bool = False):
+    def stop_puzzle_timer(self):
         """Stop the elapsed time display."""
         self.puzzle_timer.stop()
         self.timer_running = False
@@ -378,9 +396,6 @@ class MainWindow(QMainWindow):
         self.pause_button.setVisible(False)
         self.resume_button.setEnabled(False)
         self.resume_button.setVisible(False)
-        if reset_display:
-            self.elapsed_seconds = 0
-            self.timer_label.setText("00:00")
 
     def _update_timer_display(self):
         """Advance the timer label each second while active."""
@@ -398,6 +413,7 @@ class MainWindow(QMainWindow):
         self.pause_button.setVisible(False)
         self.resume_button.setEnabled(True)
         self.resume_button.setVisible(True)
+        self.crossword_widget.dirty = True
 
     def resume_puzzle_timer(self):
         """Resume the puzzle timer if it was paused."""
@@ -409,6 +425,7 @@ class MainWindow(QMainWindow):
         self.pause_button.setVisible(True)
         self.resume_button.setEnabled(False)
         self.resume_button.setVisible(False)
+        self.crossword_widget.dirty = True
 
 
 
@@ -493,3 +510,8 @@ class MainWindow(QMainWindow):
         clue = self.crossword_widget.find_clue_for_cell(row, col, direction)
 
         self.current_clue_widget.set_clue(clue)
+    
+    def closeEvent(self, event):
+        # don't check if it's dirty so that you get the exact time of the timer
+        self.save_progress()
+        super().closeEvent(event)
