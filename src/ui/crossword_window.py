@@ -18,28 +18,47 @@ from PySide6.QtWidgets import (
 )
 from ui.clues_panel import CluesPanel
 from ui.crossword_widget import KrossWordWidget
+from shiboken6 import isValid
 
 
-def timer_row( window: QMainWindow):
+def timer_row(window):
     # Timer display above current clue
-    if window.left_panel:
+
+    if window.left_panel and isValid(window.left_panel):
         return
+
     window.left_panel = QWidget()
     window.left_layout = QVBoxLayout(window.left_panel)
     window.left_layout.setSpacing(-1)
     window.left_layout.setContentsMargins(-1, -1, -1, -1)
     window.layout.addWidget(window.left_panel)
 
-    timer_row = QHBoxLayout()
-    timer_row.setAlignment(Qt.AlignVCenter)
-    timer_row.setContentsMargins(-1, -1, -1, -1)
-    timer_row.setSpacing(-1)
+    window.timer_row = QHBoxLayout()
+    window.timer_row.setAlignment(Qt.AlignVCenter)
+    window.timer_row.setContentsMargins(-1, -1, -1, -1)
+    window.timer_row.setSpacing(-1)
+
+    icon_size = QSize(24, 24)
+
+    window.back_button = QPushButton()
+    project_root = Path(__file__).resolve().parents[2]
+    back_icon_path = project_root / "assets" / "icons" / "calendar-icon.svg"
+    back_icon = window._create_colored_icon(QIcon(str(back_icon_path)), QColor(Qt.white), icon_size)
+    window.back_button.setIcon(back_icon)
+    window.back_button.setFixedSize(36, 36)
+    window.back_button.setToolTip("Go to calendar")
+    window.back_button.setEnabled(False)
+    window.back_button.setVisible(False)
+    window.back_button.clicked.connect(window.back_to_calendar)
+    window._style_icon_button(window.back_button)
+    window.timer_row.addWidget(window.back_button)
+
+
     window.timer_label = QLabel("00:00")
     window.timer_label.setFont(QFont("Arial", 12, QFont.Bold))
     window.timer_label.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-    timer_row.addWidget(window.timer_label)
+    window.timer_row.addWidget(window.timer_label)
 
-    icon_size = QSize(24, 24)
 
     window.pause_button = QPushButton()
     pause_icon = window._create_colored_icon(
@@ -52,7 +71,7 @@ def timer_row( window: QMainWindow):
     window.pause_button.setVisible(False)
     window.pause_button.clicked.connect(window.pause_puzzle_timer)
     window._style_icon_button(window.pause_button)
-    timer_row.addWidget(window.pause_button)
+    window.timer_row.addWidget(window.pause_button)
 
     window.resume_button = QPushButton()
     resume_icon = window._create_colored_icon(
@@ -65,7 +84,7 @@ def timer_row( window: QMainWindow):
     window.resume_button.setVisible(False)
     window.resume_button.clicked.connect(window.resume_puzzle_timer)
     window._style_icon_button(window.resume_button)
-    timer_row.addWidget(window.resume_button)
+    window.timer_row.addWidget(window.resume_button)
 
     window.pencil_button= QPushButton()
     project_root = Path(__file__).resolve().parents[2]
@@ -81,27 +100,26 @@ def timer_row( window: QMainWindow):
     window.pencil_button.setVisible(False)
     window.pencil_button.clicked.connect(window.set_pencil_mode)
     window._style_icon_button(window.pencil_button)
-    timer_row.addWidget(window.pencil_button)
+    window.timer_row.addWidget(window.pencil_button)
 
     window.cells_filled = QLabel()
     window.cells_filled.setToolTip("Ratio of cells filled")
     window.cells_filled.setVisible(False)
-    timer_row.addWidget(window.cells_filled)
+    window.timer_row.addWidget(window.cells_filled)
 
-    timer_row.addStretch()
-
-    window.left_layout.addLayout(timer_row)
+    window.timer_row.addStretch()
+    window.left_layout.addLayout(window.timer_row)
 
 
 def load_puzzle(window, normalized_path: str):
     window.current_puzzle = window.file_loader_service.load_ipuz_file(normalized_path)
     window.current_puzzle_path = normalized_path
     
-    if not window.current_clue_widget:
+    if not window.current_clue_widget or not isValid(window.current_clue_widget):
         window.current_clue_widget = Current_Clue_Widget()
         window.left_layout.addWidget(window.current_clue_widget)
 
-    if not window.crossword_widget:
+    if not window.crossword_widget or not isValid(window.crossword_widget):
         window.crossword_widget = KrossWordWidget()
         # Crossword grid
         window.crossword_widget.cell_selected.connect(window.on_cell_selected)
@@ -138,7 +156,7 @@ def load_puzzle(window, normalized_path: str):
     window.reveal_puzzle_action.triggered.connect(window.check_and_reveal.reveal_answers)
     window.reveal_puzzle_action.setEnabled(True)
 
-    if window.right_panel is not None:
+    if window.right_panel and isValid(window.right_panel):
         window.layout.removeWidget(window.right_panel)
         window.right_panel.setParent(None)
         window.right_panel.deleteLater()
@@ -203,6 +221,16 @@ def load_puzzle(window, normalized_path: str):
     
     window.pencil_button.setVisible(True)
     window.pencil_button.setEnabled(True)
+
+    window.back_button.setVisible(True)
+    window.back_button.setEnabled(True)
+
+    window.check_word_action.setEnabled(True)
+    window.check_letter_action.setEnabled(True)
+    window.reveal_word_action.setEnabled(True)
+    window.reveal_letter_action.setEnabled(True)
+
+    window.check_puzzle_action.setEnabled(True)
 
     window.crossword_widget.cells_filled = window.current_puzzle.initial_filled_cells
 

@@ -3,6 +3,8 @@ import traceback
 import json
 from pathlib import Path
 from datetime import datetime
+
+from shiboken6 import isValid
 from ui.stats_tab import stats_tab
 from ui.message_dialog import show_message
 from ui.ai_windows import ai_window
@@ -151,9 +153,6 @@ class MainWindow(QMainWindow):
         # Create menu bar
         self.create_menu_bar()
 
-        # Central widget with splitter
-        central_widget = QWidget()
-
         self.setCentralWidget(self.main_tabs)
         puzzle_page = QWidget()
         self.layout = QHBoxLayout(puzzle_page)
@@ -194,7 +193,6 @@ class MainWindow(QMainWindow):
             self.stop_puzzle_timer()
         if correct or not self.shown:
             show_message(self, correct)
-
         if not self.shown:
             self.shown = True
 
@@ -260,8 +258,8 @@ class MainWindow(QMainWindow):
             if self.calendar:
                 self.layout.removeWidget(self.calendar)
                 self.calendar.setParent(None)
-                self.calendar.deleteLater()
-                self.calendar = None
+                #self.calendar.deleteLater()
+                #self.calendar = None
             timer_row(self)
             load_puzzle(self, normalized_path)
             return True
@@ -274,6 +272,24 @@ class MainWindow(QMainWindow):
                 print(f"Failed to load puzzle from {normalized_path}: {e}")
             self.current_puzzle_path = None
             return False
+
+    def clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.setParent(None)
+                w.deleteLater()
+            else:
+                child_layout = item.layout()
+                if child_layout:
+                    self.clear_layout(child_layout)
+
+
+    def back_to_calendar(self):
+        self.save_progress()
+        self.clear_layout(self.layout)
+        self.layout.addWidget(self.calendar)  
 
     def save_progress(self):
         """Save current progress"""
@@ -342,7 +358,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", f"Failed to save progress: {e}")
     
     def autosave(self):
-        if self.crossword_widget:
+        if self.crossword_widget and isValid(self.crossword_widget):
             if not self.crossword_widget.dirty:
                 return
             self.save_progress()
@@ -406,9 +422,10 @@ class MainWindow(QMainWindow):
 
     def _update_timer_display(self):
         """Advance the timer label each second while active."""
-        self.elapsed_seconds += 1
-        minutes, seconds = divmod(self.elapsed_seconds, 60)
-        self.timer_label.setText(f"{minutes:02d}:{seconds:02d}")
+        if self.timer_label and isValid(self.timer_label):
+            self.elapsed_seconds += 1
+            minutes, seconds = divmod(self.elapsed_seconds, 60)
+            self.timer_label.setText(f"{minutes:02d}:{seconds:02d}")
 
     def pause_puzzle_timer(self):
         """Pause the puzzle timer without resetting elapsed time."""
@@ -520,6 +537,6 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         # don't check if it's dirty so that you get the exact time of the timer
-        if self.crossword_widget:
+        if self.crossword_widget and isValid(self.crossword_widget):
             self.save_progress()
             super().closeEvent(event)

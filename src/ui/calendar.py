@@ -108,7 +108,6 @@ class DateBox(QWidget):
         self.image = QSvgWidget(str(crossword_icon_path))
         self.image.setFixedSize(32, 32)   # pick a size you like
 
-        #if not self.directory or self.file_name not in {p.name for p in Path(self.directory).iterdir() if p.is_file()}:
         if not Path(self.file).exists():
             effect = QGraphicsColorizeEffect(self.image)
             effect.setColor(QColor("gray"))   # tint color
@@ -139,7 +138,7 @@ class DateBox(QWidget):
             with open(progressFile, "r") as f:
                 progress = json.load(f)
                 time_label.setText(progress["current_timer"])
-                percent_label.setText(f"{progress["percent_accomplished"]: .2f} %")
+                percent_label.setText(f"{progress["percent_accomplished"]*100: .2f} %")
                 solved = progress["puzzle_solved"]
                 color = "" if not solved else "color: green;"
                 percent_label.setStyleSheet(f"font-size: 8pt;{color}")
