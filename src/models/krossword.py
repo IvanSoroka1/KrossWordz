@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Tuple, Union
 
 @dataclass
 class KrossWordCell:
@@ -39,6 +39,9 @@ class Clue:
     start_col: int
     length: int
     direction: str  # "across" or "down"
+    references: List[Dict]
+
+
 
 @dataclass
 class KrossWordPuzzle:

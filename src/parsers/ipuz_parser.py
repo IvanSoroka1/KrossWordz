@@ -152,16 +152,20 @@ class IPUZParser:
                 clue_text = clue_data.get('clue', '')
                 answer = clue_data.get('answer', '').upper()
                 clue_number = clue_data.get('number')
+                clue_references = clue_data.get('references', [])
+
             elif isinstance(clue_data, list):
                 # Most common v2 format: [number, "text"]
                 clue_number = clue_data[0] if len(clue_data) > 0 else None
                 clue_text = clue_data[1] if len(clue_data) > 1 else ""
                 answer = ""  # Will be extracted from grid
+                clue_references = []
             else:
                 # Fallback format
                 clue_number = None
                 clue_text = str(clue_data)
                 answer = ""
+                clue_references = []
 
             # Extract answer from grid for v2 format
             if not answer:
@@ -174,7 +178,8 @@ class IPUZParser:
                 start_row=0,  # Will be set later
                 start_col=0,  # Will be set later
                 length=len(answer) if answer else 0,
-                direction=direction
+                direction=direction,
+                references=clue_references
             )
             clue_list.append(clue)
 

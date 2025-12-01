@@ -41,6 +41,7 @@ class KrossWordWidget(QWidget):
         print("DEBUG: KrossWordWidget initialized")
         self.setFocusPolicy(Qt.StrongFocus)
         self.dirty = False
+        self.referenced_cells = []
     
 
     # ------------------------------------------------------------------
@@ -272,7 +273,6 @@ class KrossWordWidget(QWidget):
         if puzzle_modified:
             self.dirty = True
 
-
     # ------------------------------------------------------------------
     # Drawing helpers
     # ------------------------------------------------------------------
@@ -304,6 +304,7 @@ class KrossWordWidget(QWidget):
 
 
     def _draw_cells(self, painter: QPainter) -> None:
+        self._get_referenced_cells()
         for row in range(self.puzzle.height):
             for col in range(self.puzzle.width):
                 self._draw_cell(painter, row, col)
@@ -356,11 +357,19 @@ class KrossWordWidget(QWidget):
                 else:
                     painter.fillRect(x, y, self.cell_size, self.cell_size, QBrush(Qt.white))
 
+        if [row, col] in self.referenced_cells:
+           painter.fillRect(
+                        x,
+                        y,
+                        self.cell_size,
+                        self.cell_size,
+                        QBrush(QColor(255, 252, 50)),
+                    ) 
+
         painter.setPen(QPen(Qt.black))
         #font = QFont("Arial Light", self.font_size, QFont.Light)
         font = QFont("Arial", self.font_size, QFont.Normal)
         painter.setFont(font)
-
 
         if cell.is_circled:
             painter.save()
@@ -455,6 +464,26 @@ class KrossWordWidget(QWidget):
     # ------------------------------------------------------------------
     # Movement helpers and editing
     # ------------------------------------------------------------------
+
+    def _get_referenced_cells(self):
+        self.referenced_cells = []
+        clue = self.find_clue_for_cell(self.selected_row, self.selected_col, self.highlight_mode)
+        for reference in clue.references:
+            direction = reference['direction'].lower()
+            reference_clue = self.puzzle.get_clue(reference['number'], direction)
+            if not reference_clue:
+                continue
+            cell_coords = list(self._get_word_start(reference_clue.start_row, reference_clue.start_col, direction))
+
+            list_index = 1 if direction == "across" else 0
+            bound = self.puzzle.width if direction == "across" else self.puzzle.height
+
+            while cell_coords[list_index] < bound and not self.puzzle.cells[cell_coords[0]][cell_coords[1]].is_black:
+                cell_coords_copy = cell_coords.copy()
+                self.referenced_cells.append(cell_coords_copy)
+                cell_coords[list_index] += 1
+
+
 
     def _handle_letter_input(self, key: int, rebus: bool) -> None:
         cell = self.puzzle.cells[self.selected_row][self.selected_col]
@@ -987,6 +1016,18 @@ class KrossWordWidget(QWidget):
                 end_row += 1
 
         return (start_col, start_row), (end_col, end_row)
+    
+    def _get_word_start(self, row: int, col: int, direction: str):
+        if direction == "across":
+            start_col = col
+            while start_col > 0 and not self.puzzle.cells[row][start_col - 1].is_black:
+                start_col -= 1
+            return row, start_col
+        else:
+            start_row = row
+            while start_row > 0 and not self.puzzle.cells[start_row - 1][col].is_black:
+                start_row -= 1
+            return start_row, col
 
     def set_pencil_mode(self):
         self.pencil_mode = not self.pencil_mode

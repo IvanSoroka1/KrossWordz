@@ -474,10 +474,6 @@ class MainWindow(QMainWindow):
 
     def on_cell_selected(self, row, col):
         """Handle cell selection events"""
-        print(f"Cell selected: ({row}, {col})")
-        cell = self.current_puzzle.cells[row][col] if self.current_puzzle else None
-        print(f"Cell has clue_number: {cell.clue_number if cell else 'None'}")
-
         # Always update current clue display, regardless of whether cell has a number
         self._update_current_clue_display(row, col)
         self._update_clues_highlight(row, col)
