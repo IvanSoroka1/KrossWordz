@@ -67,11 +67,13 @@ class KrossWordPuzzle:
         self.width = width
         self.height = height
         self.cells = []
+
         for i in range(height):
             row = []
             for j in range(width):
                 row.append(KrossWordCell())
             self.cells.append(row)
+
 
     def set_cell(self, row: int, col: int, solution: str, is_empty: bool = False, clue_number: Optional[int] = None):
         """Set a cell with its properties"""
@@ -87,6 +89,8 @@ class KrossWordPuzzle:
         """Get clue by number and direction"""
         clue_list = self.across_clues if direction == "across" else self.down_clues
         return next((clue for clue in clue_list if clue.number == number), None)
+
+
 
     def get_all_clues(self) -> List[Clue]:
         """Get all clues (across + down)"""

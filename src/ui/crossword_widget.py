@@ -467,9 +467,11 @@ class KrossWordWidget(QWidget):
 
     def _get_referenced_cells(self):
         self.referenced_cells = []
+
         clue = self.find_clue_for_cell(self.selected_row, self.selected_col, self.highlight_mode)
+
         for reference in clue.references:
-            direction = reference['direction'].lower()
+            direction = reference['direction']
             reference_clue = self.puzzle.get_clue(reference['number'], direction)
             if not reference_clue:
                 continue

@@ -69,9 +69,16 @@ class IPUZParser:
         self._parse_clues(puzzle, clues_data)
 
         self.get_fillable_cell_count(puzzle)
+        self.update_clues_references(puzzle)
 
         return puzzle
     
+    def update_clues_references(self, puzzle):
+        for clue_list in [puzzle.across_clues, puzzle.down_clues]:
+            for clue in clue_list:
+                for reference in clue.references:
+                    puzzle.get_clue(reference["number"], reference["direction"]).references.append({"number":clue.number, "direction":clue.direction}) 
+
     def get_fillable_cell_count(self, puzzle: KrossWordPuzzle):
         puzzle.fillable_cell_count = 0
         for row in puzzle.cells:
@@ -153,6 +160,8 @@ class IPUZParser:
                 answer = clue_data.get('answer', '').upper()
                 clue_number = clue_data.get('number')
                 clue_references = clue_data.get('references', [])
+                for clue in clue_references:
+                    clue["direction"] = clue["direction"].lower()   
 
             elif isinstance(clue_data, list):
                 # Most common v2 format: [number, "text"]
@@ -182,8 +191,7 @@ class IPUZParser:
                 references=clue_references
             )
             clue_list.append(clue)
-
-        # Find starting positions for each clue
+        
         for clue in clue_list:
             if clue.number > 0:
                 clue.start_row, clue.start_col = self._find_clue_start(puzzle, clue, direction)
