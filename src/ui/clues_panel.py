@@ -120,6 +120,8 @@ class CluesPanel(QWidget):
         self.across_text_edit = self._create_section(self.layout, "ACROSS", across_clues)
         self.down_text_edit = self._create_section(self.layout, "DOWN", down_clues)
         self.referenced_clues = []
+        self.styleSheets = dict()
+
 
     def _create_section(self, parent_layout: QHBoxLayout, title: str, clues: list[str] ) -> CluesTextEdit:
         container = QWidget(self)
@@ -154,7 +156,7 @@ class CluesPanel(QWidget):
         last_text_edit = None
 
         for clue in clues:
-            clue_widget = QWidget()
+            clue_widget = ClueWidget()
             clue_widget.setContentsMargins(0, 4, 0, 4)
             clue_widget.setStyleSheet("border-left: 8px solid; border-color: transparent;")
             clue_layout = QHBoxLayout()
@@ -182,7 +184,6 @@ class CluesPanel(QWidget):
             self.scroll_layout.addWidget(clue_widget)
 
             self.clues[(clue.number, clue.direction)] = clue_widget
-            self.clue_texts[(clue.number, clue.direction)] = text_edit
 
             last_text_edit = text_edit
 
@@ -191,13 +192,15 @@ class CluesPanel(QWidget):
 
     def greyout_text(self, number: int, direction: str, make_grey: bool) -> None:
         key=(number, direction)
-        text_edit = self.clue_texts.get(key)
-        if text_edit:
-            text_edit.set_grey_text(make_grey)
-
+        clue = self.clues.get(key)
+        if clue:
+            clue.grey = "color: grey;" if make_grey else ""
+            self.applyStyleSheet(clue)
+            
     def grey_all_clues(self) -> None:
-        for text_edit in self.clue_texts.values():
-            text_edit.set_grey_text(True)
+        for clue in self.clues.values():
+            clue.grey = "color: grey;"
+            self.applyStyleSheet(self.clues[clue])
 
     def highlight_clue(self, number: int, direction: str) -> None:
         """Highlight the requested clue and reset the previous one."""
@@ -209,27 +212,36 @@ class CluesPanel(QWidget):
             return
         # get rid of the previously highligthed clue
         if self._highlighted_key and self._highlighted_key != self._side_highlighted_key:
-            self.clues[self._highlighted_key].setStyleSheet("""
-            QWidget#clueRow {border-left: 8px solid transparent; background-color: transparent; } # if the side bar is highlighted, then it should be kept highlighted
-            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
-            """)
+            self.clues[self._highlighted_key].applyToAll = "border-left: 8px solid transparent; background-color: transparent;"
+            self.clues[self._highlighted_key].applyToText = "background-color: transparent;"
+            
+            self.applyStyleSheet(self.clues[self._highlighted_key]) 
 
         # highlight the current clue
         if clue:
-            clue.setStyleSheet("""
-            QWidget#clueRow { border-left: 8px solid #47c8ff; background-color: #47c8ff; }
-            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
-            """)           
+            # clue.highlight = """
+            # QWidget#clueRow { border-left: 8px solid #47c8ff; background-color: #47c8ff; }
+            # QWidget#clueRow * { background-color: transparent; }
+            # """           
+
+            clue.applyToAll =  "border-left: 8px solid #47c8ff; background-color: #47c8ff;"  
+            clue.applyToText = "background-color: transparent;"
             self._highlighted_key = key
             self._scroll_clue_into_view(direction, clue)
+            self.applyStyleSheet(clue)
         else:
             self._highlighted_key = None
+        
+    def applyStyleSheet(self, clue):
+        string =  f"QWidget#clueRow {{ {clue.applyToAll}}}\nQWidget#clueRow * {{ {clue.applyToText} {clue.grey}}}" 
+        print(string)
+        clue.setStyleSheet(string)
     
     def clear_referenced_clues_highlight(self):
         for clue in self.referenced_clues:
-            clue.setStyleSheet("""
-            QWidget#clueRow { border-left: 8px solid transparent; background-color: transparent; }
-            """)
+            if clue != self.clues[self._highlighted_key] and clue != self.clues[self._side_highlighted_key]:
+                clue.applyToAll = "border-left: 8px solid transparent; background-color: transparent; "
+                self.applyStyleSheet(clue)
         self.referenced_clues.clear()
     
 
@@ -238,9 +250,8 @@ class CluesPanel(QWidget):
         clue = self.clues.get(key)
         if clue:
             self.referenced_clues.append(clue)
-            clue.setStyleSheet("""
-            QWidget#clueRow { border-left: 8px solid #baab04; background-color: #baab04; }
-            """)            
+            clue.applyToAll = "border-left: 8px solid #baab04; background-color: #baab04; "           
+            self.applyStyleSheet(clue)
 
     
     def highlight_clue_side(self, number: int, direction: str) -> None:
@@ -254,28 +265,20 @@ class CluesPanel(QWidget):
 
         if self._side_highlighted_key:
             #self.clues[self._side_highlighted_key].setStyleSheet(f"border-left: 8px solid; border-color: transparent; background-color: transparent;")
-            self.clues[self._side_highlighted_key].setStyleSheet("""
-            QWidget#clueRow { border-left: 8px solid transparent; background-color: transparent; }
-            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
-            """)
+            self.clues[self._side_highlighted_key].applyToAll = "border-left: 8px solid transparent; background-color: transparent; "
+            self.clues[self._side_highlighted_key].applyToText = "background-color: transparent;"
+            self.applyStyleSheet(self.clues[self._side_highlighted_key])
 
         if sideBox:
-            sideBox.setStyleSheet("""
-            QWidget#clueRow { border-left: 8px solid #47c8ff; background-color: transparent; }
-            QWidget#clueRow * { background-color: transparent; }  # keeps children clear
-            """)
+            sideBox.applyToAll = "border-left: 8px solid #47c8ff; background-color: transparent;"
+            sideBox.applyToText = "background-color: transparent;"
             self._side_highlighted_key = key
             self._scroll_clue_into_view(direction, sideBox)
+            self.applyStyleSheet(sideBox)
         else:
             self._side_highlighted_key = None
         
-    
 
-    def clear_highlight(self) -> None:
-        """Remove highlight from the currently highlighted clue, if any."""
-        if self._highlighted_key and self._highlighted_key in self.clues:
-            self.clues[self._highlighted_key].set_highlighted(False)
-        self._highlighted_key = None
 
     def _handle_clue_click(self, number: int, direction: str) -> None:
         """React to clue clicks by highlighting and bubbling the event."""
@@ -334,13 +337,10 @@ class CluesPanel(QWidget):
         update_scroll()
 
 
-
-    def set_across_text(self, text: str) -> None:
-        self.across_text_edit.setText(text)
-
-    def set_down_text(self, text: str) -> None:
-        self.down_text_edit.setText(text)
-
-    def clear(self) -> None:
-        self.across_text_edit.clear()
-        self.down_text_edit.clear()
+class ClueWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.applyToAll = ""
+        self.applyToText = ""
+        self.grey = ""
