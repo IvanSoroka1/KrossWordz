@@ -501,6 +501,10 @@ class MainWindow(QMainWindow):
         else:
             self.clues_panel.clear_highlight()
 
+        self.clues_panel.clear_referenced_clues_highlight()
+        for reference in clue.references:
+            self.clues_panel.highlight_reference_clue(reference["number"], reference["direction"])
+
 
     def _has_cell_in_direction(self, row, col, direction):
         """Check if a cell is part of a clue in the given direction"""
