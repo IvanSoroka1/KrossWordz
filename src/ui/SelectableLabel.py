@@ -9,7 +9,7 @@ class SelectableLabel(QLabel):
         super().__init__(parent=parent, text=text)
 
         self.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-        self.setFocusPolicy(Qt.ClickFocus)  # needed for keyboard selection
+        #self.setFocusPolicy(Qt.ClickFocus)  # needed for keyboard selection
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_menu)

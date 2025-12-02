@@ -232,6 +232,7 @@ class CluesPanel(QWidget):
             """)
         self.referenced_clues.clear()
     
+
     def highlight_reference_clue(self, number: int, direction: str):
         key = (number, direction)
         clue = self.clues.get(key)
@@ -240,9 +241,6 @@ class CluesPanel(QWidget):
             clue.setStyleSheet("""
             QWidget#clueRow { border-left: 8px solid #baab04; background-color: #baab04; }
             """)            
-        
-
-    
 
     
     def highlight_clue_side(self, number: int, direction: str) -> None:

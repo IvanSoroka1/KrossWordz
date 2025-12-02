@@ -249,6 +249,7 @@ def load_puzzle(window, normalized_path: str):
     window._update_clues_highlight(window.crossword_widget.selected_row, window.crossword_widget.selected_col)
 
     window.crossword_widget.greyout_clue.connect(window.clues_panel.greyout_text)
+    window.crossword_widget.setFocus()
 
 
 def load_previous_progress(window, crossword_widget, normalized_path):
