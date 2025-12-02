@@ -23,6 +23,7 @@ class KrossWordCell:
 
     def reveal(self) -> None:
         self.corrected = True
+        self.incorrect = False
         if self.user_input != self.solution:
             self.user_input = self.solution
             self.revealed = True
