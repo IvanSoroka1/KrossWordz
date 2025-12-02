@@ -340,7 +340,10 @@ class CluesPanel(QWidget):
 class ClueWidget(QWidget):
     def __init__(self):
         super().__init__()
+
+        # without this the margins and the spacing does not get colored in with the background
         self.setAttribute(Qt.WA_StyledBackground, True)
+
         self.applyToAll = ""
         self.applyToText = ""
         self.grey = ""

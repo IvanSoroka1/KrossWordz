@@ -564,8 +564,6 @@ class KrossWordWidget(QWidget):
             (start, end) = self._get_word_bounds(self.selected_row, self.selected_col, direction)
             start_cell = self.puzzle.cells[start[1]][start[0]]
             self.greyout_clue.emit(start_cell.clue_number, direction, False)
-
-            
     
     def check_filled_puzzle(self):
         if self.cells_filled == self.puzzle.fillable_cell_count:
@@ -1051,3 +1049,12 @@ class KrossWordWidget(QWidget):
                     break
                 start_row -= 1
             return start_row, col
+
+    def grey_out_existing_words(self):
+        for clue in self.puzzle.across_clues:
+            if self.word_filled(clue.start_col, clue.start_row, "across"):
+                self.greyout_clue.emit(clue.number, "across", True)
+        for clue in self.puzzle.down_clues:
+            if self.word_filled(clue.start_col, clue.start_row, "down"):
+                self.greyout_clue.emit(clue.number, "down", True)
+
